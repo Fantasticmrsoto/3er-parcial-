@@ -344,3 +344,21 @@ th { background-color: #f8f8f8; color: #ff6600; }
 .hidden {
     display: none !important;
 }
+
+.admin-stats {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.stat-box {
+    background: #172b4d;
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    min-width: 150px;
+}
+
+.stat-box h3 { margin: 0; font-size: 14px; opacity: 0.8; }
+.stat-box p { font-size: 24px; font-weight: bold; margin: 10px 0 0; }

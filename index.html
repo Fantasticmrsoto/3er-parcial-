@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlyReserve - Canaima Airlines</title>
+    <title>Canaima Airlines</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -30,7 +30,7 @@
     <div id="app">
         <div id="contenedor-reserva-visual" class="hero-wrapper">
             <div class="hero-slider">
-                <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1589330273594-fade1ee91647?q=80&w=2070')"></div>
+                <div class="slide" style="background-image: url('los\ roques.jpg')"></div>
                 <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1512753360424-747040409944?q=80&w=2070')"></div>
                 <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1518105779142-d975f22f1b0a?q=80&w=2070')"></div>
             </div>
@@ -176,6 +176,20 @@
                 </div>
             </div>
         </section>
+        <section id="seccion-admin" class="hidden content-card">
+    <h2>Panel de Control - Canaima Airlines</h2>
+    <div class="admin-stats">
+        <div class="stat-box">
+            <h3>Vuelos Registrados</h3>
+            <p id="admin-total-vuelos">0</p>
+        </div>
+        <div class="stat-box">
+            <h3>Asientos Ocupados</h3>
+            <p id="admin-asientos-total">0</p>
+        </div>
+    </div>
+    <button class="btn-nav" onclick="resetearSistema()">Resetear Base de Datos</button>
+</section>
     </div>
 
     <script src="script.js"></script>

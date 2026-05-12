@@ -1,9 +1,4 @@
 /**
- * SISTEMA INTEGRADO DE RESERVA DE VUELOS
- */
-
-// --- 1. ESTADO GLOBAL Y CONFIGURACIÓN ---
-/**
  * SISTEMA INTEGRADO DE RESERVA DE VUELOS - CANAIMA AIRLINES
  */
 
@@ -14,6 +9,9 @@ const configAvion = {
     asientosBloqueados: ["1A", "1C", "6A", "6F", "10A", "22A", "22B", "22C"],
     salidasEmergencia: ["1A", "1C", "1D", "1F", "10A", "10B", "10C", "10D", "10E", "10F"]
 };
+
+// Carga de persistencia: Asientos ocupados guardados en el navegador
+let asientosOcupadosGlobal = JSON.parse(localStorage.getItem('asientosOcupados')) || [...configAvion.asientosBloqueados];
 
 const baseDeDatosVuelos = [
     { nro: "AV102", destino: "España", salida: "08:00 AM", estado: "A tiempo" },
@@ -32,23 +30,18 @@ let reserva = {
     conteoCategorias: { adultos: 0, ninos: 0, infantes: 0, mayores: 0 }
 };
 
-// --- 2. NAVEGACIÓN GENERAL (SINCRONIZADA CON HTML) ---
+// --- 2. NAVEGACIÓN Y CONTROL VISUAL ---
 
 function mostrarPaso(paso) {
-    // Referencia al contenedor del carrusel y buscador
     const heroVisual = document.getElementById('contenedor-reserva-visual');
-
-    // Ocultamos todas las secciones de contenido
     document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
     document.getElementById('seccion-itinerario').classList.add('hidden');
     document.getElementById('seccion-faq').classList.add('hidden');
 
     if (paso === 1) {
-        // Mostramos el bloque visual completo (Carrusel + Buscador)
         if (heroVisual) heroVisual.classList.remove('hidden');
         document.getElementById('paso1').classList.remove('hidden');
     } else {
-        // Ocultamos el bloque visual para pasos de datos o asientos
         if (heroVisual) heroVisual.classList.add('hidden');
         const seccionObjetivo = document.getElementById(`paso${paso}`);
         if (seccionObjetivo) seccionObjetivo.classList.remove('hidden');
@@ -57,13 +50,8 @@ function mostrarPaso(paso) {
 
 function mostrarSeccion(idSeccion) {
     const heroVisual = document.getElementById('contenedor-reserva-visual');
-    
-    // Al entrar a Itinerario o FAQ, siempre ocultamos el bloque visual de reserva
     if (heroVisual) heroVisual.classList.add('hidden');
-
     document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
-    document.getElementById('seccion-itinerario').classList.add('hidden');
-    document.getElementById('seccion-faq').classList.add('hidden');
 
     if (idSeccion === 'itinerario') {
         renderizarItinerario();
@@ -73,33 +61,30 @@ function mostrarSeccion(idSeccion) {
     }
 }
 
-// --- 3. PASO 1: LÓGICA DE BÚSQUEDA Y PASAJEROS ---
+// --- 3. PASO 1: BÚSQUEDA Y LÍMITE DE 8 PASAJEROS ---
 
 function toggleDropdown(event) {
     const panel = document.getElementById('selector-panel');
-    if (event) event.stopPropagation(); // Evita que se cierre al hacer clic dentro
+    if (event) event.stopPropagation();
     panel.classList.toggle('show');
 }
 
 function cambiarCant(id, cambio) {
     const input = document.getElementById(id);
     
-    // Calcular cuánto sería el total si permitimos este cambio
+    // Validación de límite máximo de 8 en tiempo real
     const adultos = parseInt(document.getElementById('cant-adultos').value) || 0;
     const ninos = parseInt(document.getElementById('cant-ninos').value) || 0;
     const infantes = parseInt(document.getElementById('cant-infantes').value) || 0;
     const mayores = parseInt(document.getElementById('cant-mayores').value) || 0;
     const totalActual = adultos + ninos + infantes + mayores;
 
-    // Si intenta sumar (+) y ya hay 8, mostrar advertencia y no hacer nada
     if (cambio > 0 && totalActual >= 8) {
-        alert("Advertencia: Solo puede registrar máximo 8 pasajeros");
+        alert("⚠️ ADVERTENCIA: Solo puede registrar un máximo de 8 pasajeros.");
         return;
     }
 
     let valor = parseInt(input.value) + cambio;
-    
-    // Validar mínimo (usualmente 1 para adultos o 0 para el resto)
     if (valor < parseInt(input.min)) valor = parseInt(input.min);
     
     input.value = valor;
@@ -111,86 +96,55 @@ function actualizarResumen() {
     const ninos = parseInt(document.getElementById('cant-ninos').value) || 0;
     const infantes = parseInt(document.getElementById('cant-infantes').value) || 0;
     const mayores = parseInt(document.getElementById('cant-mayores').value) || 0;
-    
     const total = adultos + ninos + infantes + mayores;
     const resumen = document.getElementById('resumen-pasajeros');
     
-    // Actualización dinámica del texto en la barra
-    if (total === 1 && adultos === 1) {
-        resumen.innerText = "Adulto 1";
-    } else {
-        resumen.innerText = `${total} Pasajeros`;
-    }
+    resumen.innerText = (total === 1 && adultos === 1) ? "Adulto 1" : `${total} Pasajeros`;
 }
 
 function procesarBusqueda() {
     const origenInput = document.getElementById('origen').value;
     const destinoSelect = document.getElementById('destino-select').value;
-    const esIdaVuelta = document.getElementById('tipo-viaje').checked;
-
-    // Obtener conteo de categorías
     const adultos = parseInt(document.getElementById('cant-adultos').value) || 0;
     const ninos = parseInt(document.getElementById('cant-ninos').value) || 0;
     const infantes = parseInt(document.getElementById('cant-infantes').value) || 0;
     const mayores = parseInt(document.getElementById('cant-mayores').value) || 0;
+    const total = adultos + ninos + infantes + mayores;
 
-    const totalPasajeros = adultos + ninos + infantes + mayores;
-
-    // --- NUEVA VALIDACIÓN DE LÍMITE ---
-    if (totalPasajeros > 8) {
-        alert("⚠️ ADVERTENCIA: Solo puede registrar un máximo de 8 pasajeros por reserva.");
-        return; // Detiene la ejecución
+    if (total > 8) { 
+        alert("⚠️ ADVERTENCIA: Solo puede registrar máximo 8 pasajeros."); 
+        return; 
     }
+    if (!destinoSelect || !origenInput) { alert("Complete origen y destino."); return; }
+    if ((ninos > 0 || infantes > 0) && adultos === 0) { alert("Los menores requieren un adulto acompañante."); return; }
+    if (total === 0) { alert("Seleccione al menos un pasajero."); return; }
 
-    if (!destinoSelect || !origenInput) {
-        alert("Por favor, complete el origen y el destino.");
-        return;
-    }
-
-    // Regla de seguridad para menores
-    if ((ninos > 0 || infantes > 0) && adultos === 0) {
-        alert("REGLA DE SEGURIDAD: Todo menor de edad debe ir acompañado de un adulto representante.");
-        return;
-    }
-
-    if (totalPasajeros === 0) {
-        alert("Debe seleccionar al menos un pasajero.");
-        return;
-    }
-
-    // Guardar estado y avanzar
     reserva.origen = origenInput;
     reserva.destino = destinoSelect;
-    reserva.cantidadBoletos = totalPasajeros;
+    reserva.cantidadBoletos = total;
     reserva.conteoCategorias = { adultos, ninos, infantes, mayores };
-    reserva.tipoViaje = esIdaVuelta ? "Ida y vuelta" : "Solo ida";
+    reserva.tipoViaje = document.getElementById('tipo-viaje').checked ? "Ida y vuelta" : "Solo ida";
 
     generarFormulariosPasajeros();
     mostrarPaso(3);
 }
 
-// --- 4. PASO 3: FORMULARIOS DE PASAJEROS ---
+// --- 4. PASO 3: FORMULARIOS ---
 
 function generarFormulariosPasajeros() {
     const contenedor = document.getElementById('contenedor-pasajeros');
     contenedor.innerHTML = ""; 
-    
     for (let i = 1; i <= reserva.cantidadBoletos; i++) {
         contenedor.innerHTML += `
             <div class="card-pasajero">
-                <h4>Datos del Pasajero ${i}</h4>
-                <input type="text" placeholder="Nombre y Apellido" id="p-nombre-${i}" required>
-                <input type="text" placeholder="Cédula" id="p-cedula-${i}" required>
-                <input type="text" placeholder="Pasaporte" id="p-pasaporte-${i}" required>
+                <h4>Pasajero ${i}</h4>
+                <input type="text" placeholder="Nombre Completo" id="p-nombre-${i}" required>
+                <input type="text" placeholder="Cédula/ID" id="p-cedula-${i}" required>
+                <input type="number" id="p-edad-${i}" min="0" placeholder="Edad" required>
                 <div class="preguntas-rutinarias">
-                    <h5>Asistencia y Salud:</h5>
-                    <label><input type="checkbox" id="p-silla-${i}"> ¿Silla de ruedas?</label><br>
-                    <label><input type="checkbox" id="p-vision-${i}"> ¿Visión reducida?</label><br>
-                    <label><input type="checkbox" id="p-movilidad-${i}"> ¿Movilidad reducida?</label><br>
-                    <label>Edad: <input type="number" id="p-edad-${i}" min="0" placeholder="Ej: 25"></label>
+                    <label><input type="checkbox" id="p-silla-${i}"> Requiere asistencia especial</label>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
 }
 
@@ -200,32 +154,20 @@ function confirmarPasajeros() {
         const nombre = document.getElementById(`p-nombre-${i}`).value;
         const cedula = document.getElementById(`p-cedula-${i}`).value;
         const edad = parseInt(document.getElementById(`p-edad-${i}`).value);
-
-        if (!nombre || !cedula || isNaN(edad)) {
-            alert(`Faltan datos o edad inválida del pasajero ${i}`);
-            return;
-        }
-
-        reserva.pasajeros.push({
-            nombre, cedula,
-            pasaporte: document.getElementById(`p-pasaporte-${i}`).value,
-            asistencia: {
-                silla: document.getElementById(`p-silla-${i}`).checked,
-                vision: document.getElementById(`p-vision-${i}`).checked,
-                movilidad: document.getElementById(`p-movilidad-${i}`).checked
-            },
-            edad: edad
-        });
+        if (!nombre || !cedula || isNaN(edad)) { alert("Complete todos los campos."); return; }
+        reserva.pasajeros.push({ nombre, cedula, edad, asistencia: document.getElementById(`p-silla-${i}`).checked });
     }
     renderizarMapaAsientos();
     mostrarPaso(4);
 }
 
-// --- 5. PASO 4: MAPA DE ASIENTOS Y RESTRICCIONES ---
+// --- 5. PASO 4: MAPA Y PERSISTENCIA JSON ---
 
 function renderizarMapaAsientos() {
     const contenedor = document.getElementById('mapa-avion-container');
     contenedor.innerHTML = "";
+    // Sincronizar asientos ocupados desde la "base de datos" local
+    asientosOcupadosGlobal = JSON.parse(localStorage.getItem('asientosOcupados')) || [...configAvion.asientosBloqueados];
 
     for (let f = 1; f <= 22; f++) {
         const filaDiv = document.createElement('div');
@@ -233,14 +175,11 @@ function renderizarMapaAsientos() {
         const letras = configAvion.filasClub.includes(f) ? ['A', 'C', 'pasillo', 'D', 'F'] : ['A', 'B', 'C', 'pasillo', 'D', 'E', 'F'];
 
         letras.forEach(l => {
-            if (l === 'pasillo') {
-                const p = document.createElement('div'); p.className = 'pasillo';
-                filaDiv.appendChild(p); return;
-            }
+            if (l === 'pasillo') { filaDiv.innerHTML += '<div class="pasillo"></div>'; return; }
             const id = `${f}${l}`;
             const btn = document.createElement('button');
             btn.innerText = id;
-            if (configAvion.asientosBloqueados.includes(id)) {
+            if (asientosOcupadosGlobal.includes(id)) {
                 btn.className = 'asiento ocupado'; btn.disabled = true;
             } else {
                 btn.className = 'asiento disponible';
@@ -257,27 +196,61 @@ function manejarSeleccionAsiento(id, elemento) {
     if (indice > -1) {
         reserva.asientos.splice(indice, 1);
         elemento.classList.remove('seleccionado');
-        return;
-    }
-
-    if (reserva.asientos.length < reserva.cantidadBoletos) {
-        const pasajeroActual = reserva.pasajeros[reserva.asientos.length];
-        const esSalidaEmergencia = configAvion.salidasEmergencia.includes(id);
-        
-        // Validación de seguridad para salidas de emergencia
-        if (esSalidaEmergencia && (pasajeroActual.edad < 18 || pasajeroActual.edad >= 60 || Object.values(pasajeroActual.asistencia).includes(true))) {
-            alert("SEGURIDAD: Este asiento es salida de emergencia. No apto para menores, adultos mayores o personas con asistencia.");
-            return;
-        }
-
+    } else if (reserva.asientos.length < reserva.cantidadBoletos) {
         reserva.asientos.push(id);
         elemento.classList.add('seleccionado');
-    } else {
-        alert("Cupo de asientos completo.");
     }
 }
 
-// --- 6. FUNCIONES DE APOYO Y EVENTOS ---
+// --- 6. CIERRE: GUARDAR Y PRINT ---
+
+function finalizarReserva() {
+    if (reserva.asientos.length < reserva.cantidadBoletos) {
+        alert("Debe seleccionar todos los asientos."); return;
+    }
+
+    // 1. Guardar en historial y actualizar puestos ocupados (JSON persistente)
+    asientosOcupadosGlobal.push(...reserva.asientos);
+    localStorage.setItem('asientosOcupados', JSON.stringify(asientosOcupadosGlobal));
+
+    // 2. Generar ventana de impresión
+    const ventanaPrint = window.open('', '_blank');
+    ventanaPrint.document.write(`
+        <html>
+        <head>
+            <title>Ticket de Reserva - Canaima Airlines</title>
+            <style>
+                body { font-family: sans-serif; padding: 40px; }
+                .ticket { border: 2px solid #444; padding: 20px; border-radius: 10px; max-width: 500px; margin: auto; }
+                h1 { color: #0052cc; text-align: center; border-bottom: 2px solid #eee; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            </style>
+        </head>
+        <body>
+            <div class="ticket">
+                <h1>CANAIMA AIRLINES</h1>
+                <p><b>Ruta:</b> ${reserva.origen} ✈️ ${reserva.destino}</p>
+                <p><b>Tipo:</b> ${reserva.tipoViaje}</p>
+                <table>
+                    <thead><tr><th>Pasajero</th><th>ID</th><th>Asiento</th></tr></thead>
+                    <tbody>
+                        ${reserva.pasajeros.map((p, i) => `
+                            <tr><td>${p.nombre}</td><td>${p.cedula}</td><td>${reserva.asientos[i]}</td></tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <p style="text-align:center">¡Gracias por preferirnos!</p>
+            </div>
+            <script>window.print();</script>
+        </body>
+        </html>
+    `);
+    ventanaPrint.document.close();
+
+    alert("Reserva finalizada. Los asientos han sido actualizados.");
+    location.reload(); 
+}
 
 function renderizarItinerario() {
     const contenedor = document.getElementById('tabla-vuelos');
@@ -289,40 +262,51 @@ function renderizarItinerario() {
     contenedor.innerHTML = tabla + `</tbody></table>`;
 }
 
-function finalizarReserva() {
-    if (reserva.asientos.length < reserva.cantidadBoletos) {
-        alert("Debe seleccionar todos los asientos antes de finalizar."); return;
-    }
-    const jsonString = JSON.stringify({ reserva, exportado: new Date().toISOString() }, null, 2);
-    const blob = new Blob([jsonString], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `reserva_${reserva.destino}.json`;
-    link.click();
-    alert("¡Reserva finalizada con éxito!");
-}
-
-// Event Listeners Iniciales
 document.addEventListener('DOMContentLoaded', () => {
     const toggleViaje = document.getElementById('tipo-viaje');
     if (toggleViaje) {
         toggleViaje.addEventListener('change', function() {
             document.getElementById('label-tipo-viaje').innerText = this.checked ? "Ida y vuelta" : "Solo ida";
-            const vueltaGroup = document.getElementById('vuelta-group');
-            if (vueltaGroup) {
-                vueltaGroup.style.opacity = this.checked ? "1" : "0.3";
-                vueltaGroup.querySelector('input').disabled = !this.checked;
-            }
         });
     }
-
     // Cerrar dropdown al hacer clic fuera
     document.addEventListener('click', (e) => {
         const dropdown = document.getElementById('dropdown-pasajeros');
         const panel = document.getElementById('selector-panel');
-        if (panel && dropdown && !dropdown.contains(e.target)) {
-            panel.classList.remove('show');
-        }
+        if (panel && dropdown && !dropdown.contains(e.target)) panel.classList.remove('show');
     });
 });
+
+// --- 7. MÓDULO DE ADMINISTRACIÓN ---
+
+function verificarRuta() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const rol = urlParams.get('role');
+
+    if (rol === 'admin') {
+        // Ocultar todo y mostrar admin
+        const heroVisual = document.getElementById('contenedor-reserva-visual');
+        if (heroVisual) heroVisual.classList.add('hidden');
+        document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+        
+        document.getElementById('seccion-admin').classList.remove('hidden');
+        actualizarPanelAdmin();
+    }
+}
+
+function actualizarPanelAdmin() {
+    const ocupados = JSON.parse(localStorage.getItem('asientosOcupados')) || [];
+    document.getElementById('admin-asientos-total').innerText = ocupados.length;
+    document.getElementById('admin-total-vuelos').innerText = baseDeDatosVuelos.length;
+}
+
+function resetearSistema() {
+    if(confirm("¿Estás seguro de borrar todas las reservas actuales?")) {
+        localStorage.removeItem('asientosOcupados');
+        alert("Sistema reseteado.");
+        window.location.href = window.location.pathname; // Redirigir al inicio
+    }
+}
+
+// Ejecutar la verificación al cargar la página
+window.addEventListener('load', verificarRuta);
