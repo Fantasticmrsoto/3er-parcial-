@@ -3,24 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlyReserve - Sistema de Vuelos</title>
+    <title>FlyReserve - Canaima Airlines</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Barra de Navegación Superior -->
     <nav class="navbar">
         <div class="logo-wrapper">
-  <div class="logo-icon">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z"></path>
-    </svg>
-  </div>
-  <div class="logo-text">
-    <span class="brand-name">Canaima</span>
-    <span class="brand-sub">Airlines</span>
-  </div>
-</div>
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z"></path>
+                </svg>
+            </div>
+            <div class="logo-text">
+                <span class="brand-name">Canaima</span>
+                <span class="brand-sub">Airlines</span>
+            </div>
+        </div>
         <ul class="nav-links">
             <li><a href="#" onclick="mostrarPaso(1)">Reserva</a></li>
             <li><a href="#" onclick="mostrarSeccion('itinerario')">Itinerario</a></li>
@@ -29,118 +28,119 @@
     </nav>
 
     <div id="app">
-        
-        <!-- PASO 1: Barra de Búsqueda (Estilo image_9cd833.png) -->
-        <section id="paso1" class="search-container">
-    <div class="toggle-container">
-        <label class="switch">
-            <input type="checkbox" id="tipo-viaje" checked>
-            <span class="slider round"></span>
-        </label>
-        <span id="label-tipo-viaje" class="label-text">Ida y vuelta</span>
-    </div>
-
-    <div class="search-bar">
-        <div class="input-group">
-            <span class="icon">✈️</span>
-            <input type="text" id="origen" placeholder="Desde">
-        </div>
-
-        <div class="input-group">
-            <span class="icon">📍</span>
-            <select id="destino-select">
-                <option value="" disabled selected>Hacia</option>
-                <option value="Venezuela">Venezuela</option>
-                <option value="España">España</option>
-                <option value="Argentina">Argentina</option>
-                <option value="Colombia">Colombia</option>
-            </select>
-        </div>
-
-        <div class="input-group">
-            <span class="icon">📅</span>
-            <input type="text" placeholder="Ida" onfocus="(this.type='date')" onblur="(this.type='text')">
-        </div>
-
-        <div class="input-group" id="vuelta-group">
-            <span class="icon">📅</span>
-            <input type="text" placeholder="Vuelta" onfocus="(this.type='date')" onblur="(this.type='text')">
-        </div>
-
-        <div class="input-group passenger-dropdown" id="dropdown-pasajeros">
-            <div class="dropdown-trigger" onclick="toggleDropdown(event)">
-                <span class="icon">👥</span>
-                <span id="resumen-pasajeros">Adulto 1</span>
+        <div id="contenedor-reserva-visual" class="hero-wrapper">
+            <div class="hero-slider">
+                <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1589330273594-fade1ee91647?q=80&w=2070')"></div>
+                <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1512753360424-747040409944?q=80&w=2070')"></div>
+                <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1518105779142-d975f22f1b0a?q=80&w=2070')"></div>
             </div>
-            
-            <div class="passenger-selector-panel" id="selector-panel">
-                <div class="p-row">
-                    <div class="p-info">
-                        <span class="p-label">Adultos</span>
-                        <span class="p-sub">Desde 13 a 59 años</span>
-                    </div>
-                    <div class="p-controls">
-                        <button type="button" class="btn-step" onclick="cambiarCant('cant-adultos', -1)">−</button>
-                        <input type="number" id="cant-adultos" value="1" min="1" readonly>
-                        <button type="button" class="btn-step" onclick="cambiarCant('cant-adultos', 1)">+</button>
-                    </div>
+
+            <section id="paso1" class="search-container">
+                <div class="toggle-container">
+                    <label class="switch">
+                        <input type="checkbox" id="tipo-viaje" checked>
+                        <span class="slider round"></span>
+                    </label>
+                    <span id="label-tipo-viaje" class="label-text">Ida y vuelta</span>
                 </div>
 
-                <div class="p-row">
-                    <div class="p-info">
-                        <span class="p-label">Niños</span>
-                        <span class="p-sub">De 3 a 12 años</span>
+                <div class="search-bar">
+                    <div class="input-group">
+                        <span class="icon">✈️</span>
+                        <input type="text" id="origen" placeholder="Desde">
                     </div>
-                    <div class="p-controls">
-                        <button type="button" class="btn-step" onclick="cambiarCant('cant-ninos', -1)">−</button>
-                        <input type="number" id="cant-ninos" value="0" min="0" readonly>
-                        <button type="button" class="btn-step" onclick="cambiarCant('cant-ninos', 1)">+</button>
+
+                    <div class="input-group">
+                        <span class="icon">📍</span>
+                        <select id="destino-select">
+                            <option value="" disabled selected>Hacia</option>
+                            <option value="Venezuela">Venezuela</option>
+                            <option value="España">España</option>
+                            <option value="Argentina">Argentina</option>
+                            <option value="Colombia">Colombia</option>
+                        </select>
                     </div>
+
+                    <div class="input-group">
+                        <span class="icon">📅</span>
+                        <input type="text" placeholder="Ida" onfocus="(this.type='date')" onblur="(this.type='text')">
+                    </div>
+
+                    <div class="input-group" id="vuelta-group">
+                        <span class="icon">📅</span>
+                        <input type="text" placeholder="Vuelta" onfocus="(this.type='date')" onblur="(this.type='text')">
+                    </div>
+
+                    <div class="input-group passenger-dropdown" id="dropdown-pasajeros">
+                        <div class="dropdown-trigger" onclick="toggleDropdown(event)">
+                            <span class="icon">👥</span>
+                            <span id="resumen-pasajeros">Adulto 1</span>
+                        </div>
+                        
+                        <div class="passenger-selector-panel" id="selector-panel">
+                            <div class="p-row">
+                                <div class="p-info">
+                                    <span class="p-label">Adultos</span>
+                                    <span class="p-sub">Desde 13 a 59 años</span>
+                                </div>
+                                <div class="p-controls">
+                                    <button type="button" class="btn-step" onclick="cambiarCant('cant-adultos', -1)">−</button>
+                                    <input type="number" id="cant-adultos" value="1" min="1" readonly>
+                                    <button type="button" class="btn-step" onclick="cambiarCant('cant-adultos', 1)">+</button>
+                                </div>
+                            </div>
+
+                            <div class="p-row">
+                                <div class="p-info">
+                                    <span class="p-label">Niños</span>
+                                    <span class="p-sub">De 3 a 12 años</span>
+                                </div>
+                                <div class="p-controls">
+                                    <button type="button" class="btn-step" onclick="cambiarCant('cant-ninos', -1)">−</button>
+                                    <input type="number" id="cant-ninos" value="0" min="0" readonly>
+                                    <button type="button" class="btn-step" onclick="cambiarCant('cant-ninos', 1)">+</button>
+                                </div>
+                            </div>
+
+                            <div class="p-row">
+                                <div class="p-info">
+                                    <span class="p-label">Infantes</span>
+                                    <span class="p-sub">De 0 a 2 años</span>
+                                </div>
+                                <div class="p-controls">
+                                    <button type="button" class="btn-step" onclick="cambiarCant('cant-infantes', -1)">−</button>
+                                    <input type="number" id="cant-infantes" value="0" min="0" readonly>
+                                    <button type="button" class="btn-step" onclick="cambiarCant('cant-infantes', 1)">+</button>
+                                </div>
+                            </div>
+
+                            <div class="p-row">
+                                <div class="p-info">
+                                    <span class="p-label">Mayores</span>
+                                    <span class="p-sub">de 60 años</span>
+                                </div>
+                                <div class="p-controls">
+                                    <button type="button" class="btn-step" onclick="cambiarCant('cant-mayores', -1)">−</button>
+                                    <input type="number" id="cant-mayores" value="0" min="0" readonly>
+                                    <button type="button" class="btn-step" onclick="cambiarCant('cant-mayores', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-buscar" onclick="procesarBusqueda()">BUSCAR</button>
                 </div>
-
-                <div class="p-row">
-                    <div class="p-info">
-                        <span class="p-label">Infantes</span>
-                        <span class="p-sub">De 0 a 2 años</span>
-                    </div>
-                    <div class="p-controls">
-                        <button type="button" class="btn-step" onclick="cambiarCant('cant-infantes', -1)">−</button>
-                        <input type="number" id="cant-infantes" value="0" min="0" readonly>
-                        <button type="button" class="btn-step" onclick="cambiarCant('cant-infantes', 1)">+</button>
-                    </div>
-                </div>
-
-                <div class="p-row">
-                    <div class="p-info">
-                        <span class="p-label">Mayores</span>
-                        <span class="p-sub">de 60 años</span>
-                    </div>
-                    <div class="p-controls">
-                        <button type="button" class="btn-step" onclick="cambiarCant('cant-mayores', -1)">−</button>
-                        <input type="number" id="cant-mayores" value="0" min="0" readonly>
-                        <button type="button" class="btn-step" onclick="cambiarCant('cant-mayores', 1)">+</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <button class="btn-buscar" onclick="procesarBusqueda()">BUSCAR</button>
-    </div>
-</section>
-
-        <!-- PASO 3: Datos de Pasajeros (Referencia image_9cf584.png) -->
-        <section id="paso3" class="hidden content-card">
+            </section>
+        </div> <section id="paso3" class="hidden content-card">
             <h2>Información de los Pasajeros</h2>
             <div id="contenedor-pasajeros">
-                <!-- Se genera dinámicamente con JS -->
-            </div>
+                </div>
             <div class="acciones">
                 <button class="btn-nav" onclick="mostrarPaso(1)">Volver</button>
                 <button class="btn-primario" onclick="confirmarPasajeros()">Siguiente: Asientos</button>
             </div>
         </section>
 
-        <!-- PASO 4: Mapa de Asientos (Referencia 4e195411-d645...) -->
         <section id="paso4" class="hidden content-card">
             <h2>Selección de Asientos</h2>
             <div class="leyenda">
@@ -150,8 +150,7 @@
             </div>
             
             <div id="mapa-avion-container" class="avion">
-                <!-- Se genera dinámicamente con JS -->
-            </div>
+                </div>
 
             <div class="acciones">
                 <button class="btn-nav" onclick="mostrarPaso(3)">Volver</button>
@@ -159,33 +158,24 @@
             </div>
         </section>
 
-        <!-- SECCIÓN: Itinerario de Vuelos -->
         <section id="seccion-itinerario" class="hidden content-card">
             <h2>Itinerario de Vuelos Disponibles</h2>
-            <div id="tabla-vuelos">
-                <!-- Se llena con JS -->
-            </div>
+            <div id="tabla-vuelos"></div>
         </section>
 
-        <!-- SECCIÓN: Preguntas Frecuentes (FAQ) -->
         <section id="seccion-faq" class="hidden content-card">
             <h2>Preguntas Frecuentes</h2>
             <div class="faq-container">
                 <div class="faq-item">
                     <h3>¿Cómo recibo mi boleto?</h3>
-                    <p>Al finalizar la reserva, el sistema generará un archivo JSON con todos tus datos que sirve como comprobante digital.</p>
+                    <p>Al finalizar la reserva, el sistema generará un archivo JSON con todos tus datos.</p>
                 </div>
                 <div class="faq-item">
                     <h3>¿Puedo llevar mascotas?</h3>
-                    <p>Sí, pero debes marcar la opción de asistencia especial en el formulario de pasajeros.</p>
-                </div>
-                <div class="faq-item">
-                    <h3>¿Con cuánta antelación debo estar en el aeropuerto?</h3>
-                    <p>Para vuelos internacionales (España, Argentina), recomendamos 3 horas de antelación.</p>
+                    <p>Sí, debe marcar la asistencia especial en el formulario de pasajeros.</p>
                 </div>
             </div>
         </section>
-
     </div>
 
     <script src="script.js"></script>

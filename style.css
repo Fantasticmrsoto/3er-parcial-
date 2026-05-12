@@ -272,3 +272,75 @@ input:checked + .slider:before { transform: translateX(20px); }
 table { width: 100%; border-collapse: collapse; margin-top: 20px; }
 th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
 th { background-color: #f8f8f8; color: #ff6600; }
+
+/* --- ESTILOS DEL CARRUSEL AUTOMÁTICO --- */
+.hero-wrapper {
+    position: relative;
+    width: 100%;
+    height: 500px; /* Altura aumentada para mejor impacto visual */
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #000; /* Fondo base para evitar destellos blancos */
+}
+
+.hero-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.slide {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    /* Suavizamos la animación a 12s para 3 fotos (4s por foto) */
+    animation: sliderAnim 12s linear infinite; 
+}
+
+/* Tiempos de retraso ajustados para 12 segundos totales */
+.slide:nth-child(1) { animation-delay: 0s; }
+.slide:nth-child(2) { animation-delay: 4s; }
+.slide:nth-child(3) { animation-delay: 8s; }
+
+@keyframes sliderAnim {
+    0% { opacity: 0; }
+    8% { opacity: 1; }  /* Aparece rápido */
+    33% { opacity: 1; } /* Se mantiene visible un tercio del tiempo */
+    41% { opacity: 0; } /* Desaparece suavemente */
+    100% { opacity: 0; }
+}
+
+/* --- SUPERPOSICIÓN DEL BUSCADOR --- */
+.search-container {
+    position: relative;
+    z-index: 10;
+    /* Fondo oscuro con mayor transparencia para resaltar el desenfoque */
+    background: rgba(0, 0, 0, 0.3); 
+    backdrop-filter: blur(12px); /* Desenfoque más profundo (Glassmorphism) */
+    -webkit-backdrop-filter: blur(12px);
+    padding: 35px;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 1100px;
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Borde sutil para efecto cristal */
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+}
+
+/* Ajuste de navegación */
+.navbar {
+    position: relative;
+    z-index: 20;
+    background: #ffffff;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.hidden {
+    display: none !important;
+}
