@@ -26,6 +26,7 @@
                 <li><a href="#" onclick="mostrarPaso(1)">Inicio</a></li>
                 <li><a href="#" onclick="mostrarPaso(1)">Reserva</a></li>
                 <li><a href="#" onclick="mostrarSeccion('itinerario')">Itinerario</a></li>
+                <li><a href="#" onclick="mostrarSeccion('destinos')">Destinos</a></li>
                 <li><a href="#" onclick="mostrarSeccion('faq')">Preguntas Frecuentes</a></li>
             </ul>
         </nav>
@@ -59,14 +60,16 @@
                         <input type="text" id="destino-select" placeholder="Hacia" readonly style="cursor:pointer;">
                     </div>
 
-                    <div class="input-group">
+                    <div class="input-group calendario-wrapper">
                         <span class="icon">📅</span>
-                        <input type="text" placeholder="Ida" onfocus="(this.type='date')" onblur="(this.type='text')">
+                        <input type="text" id="fecha-ida" placeholder="Ida" readonly onclick="toggleCalendario('ida')">
+                        <div class="calendario-popup" id="cal-ida"></div>
                     </div>
 
-                    <div class="input-group" id="vuelta-group">
+                    <div class="input-group calendario-wrapper" id="vuelta-group">
                         <span class="icon">📅</span>
-                        <input type="text" placeholder="Vuelta" onfocus="(this.type='date')" onblur="(this.type='text')">
+                        <input type="text" id="fecha-vuelta" placeholder="Vuelta" readonly onclick="toggleCalendario('vuelta')">
+                        <div class="calendario-popup" id="cal-vuelta"></div>
                     </div>
 
                     <div class="input-group passenger-dropdown" id="dropdown-pasajeros">
@@ -135,7 +138,17 @@
                 </div>
             <div class="acciones">
                 <button class="btn-nav" onclick="mostrarPaso(1)">Volver</button>
-                <button class="btn-primario" onclick="confirmarPasajeros()">Siguiente: Asientos</button>
+                <button class="btn-primario" onclick="confirmarPasajeros()">Siguiente: Restricciones</button>
+            </div>
+        </section>
+
+        <section id="paso-restricciones" class="hidden content-card">
+            <h2>Restricciones de Asiento</h2>
+            <p class="restricciones-sub">Complete la siguiente información para asignar un asiento seguro y adecuado. Las respuestas pueden afectar los asientos disponibles.</p>
+            <div id="contenedor-restricciones"></div>
+            <div class="acciones">
+                <button class="btn-nav" onclick="mostrarPaso(3)">Volver</button>
+                <button class="btn-primario" onclick="confirmarRestricciones()">Ver Asientos</button>
             </div>
         </section>
 
@@ -151,7 +164,7 @@
                 </div>
 
             <div class="acciones">
-                <button class="btn-nav" onclick="mostrarPaso(3)">Volver</button>
+                <button class="btn-nav" onclick="mostrarPaso(5)">Volver</button>
                 <button class="btn-primario" onclick="finalizarReserva()">Finalizar Reserva</button>
             </div>
         </section>
@@ -173,6 +186,11 @@
                     <p>Sí, debe marcar la asistencia especial en el formulario de pasajeros.</p>
                 </div>
             </div>
+        </section>
+        <section id="seccion-destinos" class="hidden content-card">
+            <h2>Nuestros Destinos</h2>
+            <p class="destinos-sub">Explora los destinos que Canaima Airlines tiene para ti</p>
+            <div id="grid-destinos" class="destinos-grid"></div>
         </section>
         <section id="seccion-admin" class="hidden content-card">
     <h2>Panel de Control - Canaima Airlines</h2>
@@ -335,6 +353,8 @@
             <a href="#" onclick="mostrarPaso(1)">Reservar Vuelo</a>
             <span class="footer-sep">|</span>
             <a href="#" onclick="mostrarSeccion('itinerario')">Itinerario</a>
+            <span class="footer-sep">|</span>
+            <a href="#" onclick="mostrarSeccion('destinos')">Destinos</a>
             <span class="footer-sep">|</span>
             <a href="#" onclick="mostrarSeccion('faq')">Preguntas Frecuentes</a>
         </div>
