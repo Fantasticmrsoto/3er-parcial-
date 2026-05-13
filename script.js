@@ -269,6 +269,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('label-tipo-viaje').innerText = this.checked ? "Ida y vuelta" : "Solo ida";
         });
     }
+    // Cerrar modal con Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') cerrarModal();
+    });
     // Cerrar dropdown al hacer clic fuera
     document.addEventListener('click', (e) => {
         const dropdown = document.getElementById('dropdown-pasajeros');
@@ -306,6 +310,57 @@ function resetearSistema() {
         alert("Sistema reseteado.");
         window.location.href = window.location.pathname; // Redirigir al inicio
     }
+}
+
+// --- 8. MÓDULO DE MODAL DE DESTINOS ---
+
+let modalModo = 'origen'; // 'origen' o 'destino'
+
+function abrirModalDestino(modo) {
+    modalModo = modo;
+    const modal = document.getElementById('modal-destino');
+    const titulo = document.getElementById('modal-titulo');
+    const subtitulo = document.getElementById('modal-subtitulo');
+    document.getElementById('modal-buscador').value = '';
+    filtrarDestinos();
+
+    if (modo === 'origen') {
+        titulo.textContent = 'Selecciona tu origen';
+        subtitulo.textContent = 'Elige la ciudad de partida';
+    } else {
+        titulo.textContent = 'Selecciona tu destino';
+        subtitulo.textContent = 'Elige hacia dónde quieres volar';
+    }
+
+    modal.classList.remove('hidden');
+    setTimeout(() => document.getElementById('modal-buscador').focus(), 100);
+}
+
+function cerrarModal() {
+    document.getElementById('modal-destino').classList.add('hidden');
+}
+
+function cerrarModalSiOverlay(event) {
+    if (event.target === document.getElementById('modal-destino')) {
+        cerrarModal();
+    }
+}
+
+function seleccionarDestino(valor, pais) {
+    if (modalModo === 'origen') {
+        document.getElementById('origen').value = valor;
+    } else {
+        document.getElementById('destino-select').value = valor;
+    }
+    cerrarModal();
+}
+
+function filtrarDestinos() {
+    const q = document.getElementById('modal-buscador').value.toLowerCase();
+    document.querySelectorAll('.dest-item').forEach(item => {
+        const texto = item.dataset.valor.toLowerCase() + item.dataset.pais.toLowerCase();
+        item.classList.toggle('oculto', q.length > 0 && !texto.includes(q));
+    });
 }
 
 // Ejecutar la verificación al cargar la página

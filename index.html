@@ -8,24 +8,28 @@
 </head>
 <body>
 
-    <nav class="navbar">
-        <div class="logo-wrapper">
-            <div class="logo-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z"></path>
-                </svg>
+    <header class="site-header">
+        <!-- Banda principal con logo -->
+        <nav class="navbar">
+            <div class="logo-wrapper">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z"></path>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <span class="brand-name">Canaima</span>
+                    <span class="brand-sub">Airlines</span>
+                </div>
             </div>
-            <div class="logo-text">
-                <span class="brand-name">Canaima</span>
-                <span class="brand-sub">Airlines</span>
-            </div>
-        </div>
-        <ul class="nav-links">
-            <li><a href="#" onclick="mostrarPaso(1)">Reserva</a></li>
-            <li><a href="#" onclick="mostrarSeccion('itinerario')">Itinerario</a></li>
-            <li><a href="#" onclick="mostrarSeccion('faq')">Preguntas Frecuentes</a></li>
-        </ul>
-    </nav>
+            <ul class="nav-links">
+                <li><a href="#" onclick="mostrarPaso(1)">Inicio</a></li>
+                <li><a href="#" onclick="mostrarPaso(1)">Reserva</a></li>
+                <li><a href="#" onclick="mostrarSeccion('itinerario')">Itinerario</a></li>
+                <li><a href="#" onclick="mostrarSeccion('faq')">Preguntas Frecuentes</a></li>
+            </ul>
+        </nav>
+    </header>
 
     <div id="app">
         <div id="contenedor-reserva-visual" class="hero-wrapper">
@@ -45,20 +49,14 @@
                 </div>
 
                 <div class="search-bar">
-                    <div class="input-group">
+                    <div class="input-group" onclick="abrirModalDestino('origen')">
                         <span class="icon">✈️</span>
-                        <input type="text" id="origen" placeholder="Desde">
+                        <input type="text" id="origen" placeholder="Desde" readonly style="cursor:pointer;">
                     </div>
 
-                    <div class="input-group">
+                    <div class="input-group" onclick="abrirModalDestino('destino')">
                         <span class="icon">📍</span>
-                        <select id="destino-select">
-                            <option value="" disabled selected>Hacia</option>
-                            <option value="Venezuela">Venezuela</option>
-                            <option value="España">España</option>
-                            <option value="Argentina">Argentina</option>
-                            <option value="Colombia">Colombia</option>
-                        </select>
+                        <input type="text" id="destino-select" placeholder="Hacia" readonly style="cursor:pointer;">
                     </div>
 
                     <div class="input-group">
@@ -192,6 +190,163 @@
 </section>
     </div>
 
+    <!-- MODAL DE SELECCIÓN DE DESTINOS -->
+    <div id="modal-destino" class="modal-overlay hidden" onclick="cerrarModalSiOverlay(event)">
+        <div class="modal-destino">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div class="modal-icon-wrapper">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>
+                    </div>
+                    <div>
+                        <h2 id="modal-titulo">Selecciona tu origen</h2>
+                        <p id="modal-subtitulo">Elige la ciudad de partida</p>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="cerrarModal()">✕</button>
+            </div>
+
+            <div class="modal-search-bar">
+                <span class="modal-search-icon">🔍</span>
+                <input type="text" id="modal-buscador" placeholder="Buscar ciudad o código..." oninput="filtrarDestinos()">
+            </div>
+
+            <div class="modal-grid" id="modal-grid">
+                <!-- Columna Nacionales -->
+                <div class="modal-columna">
+                    <div class="columna-header">
+                        <div class="col-icon nacional">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>
+                        </div>
+                        <h3>Nacionales</h3>
+                    </div>
+                    <ul class="lista-destinos" id="lista-nacionales">
+                        <li class="dest-item" data-valor="Barcelona (BLA)" data-pais="Venezuela" onclick="seleccionarDestino('Barcelona (BLA)', 'Venezuela')">
+                            <div class="dest-dot"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Barcelona <span class="dest-codigo">(BLA)</span></span><span class="dest-pais">Venezuela</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Barinas (BNS)" data-pais="Venezuela" onclick="seleccionarDestino('Barinas (BNS)', 'Venezuela')">
+                            <div class="dest-dot"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Barinas <span class="dest-codigo">(BNS)</span></span><span class="dest-pais">Venezuela</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Barquisimeto (BRM)" data-pais="Venezuela" onclick="seleccionarDestino('Barquisimeto (BRM)', 'Venezuela')">
+                            <div class="dest-dot"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Barquisimeto <span class="dest-codigo">(BRM)</span></span><span class="dest-pais">Venezuela</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Canaima (CAJ)" data-pais="Venezuela" onclick="seleccionarDestino('Canaima (CAJ)', 'Venezuela')">
+                            <div class="dest-dot"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Canaima <span class="dest-codigo">(CAJ)</span></span><span class="dest-pais">Venezuela</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Cumaná (CUM)" data-pais="Venezuela" onclick="seleccionarDestino('Cumaná (CUM)', 'Venezuela')">
+                            <div class="dest-dot"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Cumaná <span class="dest-codigo">(CUM)</span></span><span class="dest-pais">Venezuela</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="El Vigía (VIG)" data-pais="Venezuela" onclick="seleccionarDestino('El Vigía (VIG)', 'Venezuela')">
+                            <div class="dest-dot"></div>
+                            <div class="dest-info"><span class="dest-ciudad">El Vigía <span class="dest-codigo">(VIG)</span></span><span class="dest-pais">Venezuela</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="La Fría (LFR)" data-pais="Venezuela" onclick="seleccionarDestino('La Fría (LFR)', 'Venezuela')">
+                            <div class="dest-dot"></div>
+                            <div class="dest-info"><span class="dest-ciudad">La Fría <span class="dest-codigo">(LFR)</span></span><span class="dest-pais">Venezuela</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Las Piedras (LSP)" data-pais="Venezuela" onclick="seleccionarDestino('Las Piedras (LSP)', 'Venezuela')">
+                            <div class="dest-dot"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Las Piedras <span class="dest-codigo">(LSP)</span></span><span class="dest-pais">Venezuela</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Los Roques (LRV)" data-pais="Venezuela" onclick="seleccionarDestino('Los Roques (LRV)', 'Venezuela')">
+                            <div class="dest-dot"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Los Roques <span class="dest-codigo">(LRV)</span></span><span class="dest-pais">Venezuela</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Maracaibo (MAR)" data-pais="Venezuela" onclick="seleccionarDestino('Maracaibo (MAR)', 'Venezuela')">
+                            <div class="dest-dot"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Maracaibo <span class="dest-codigo">(MAR)</span></span><span class="dest-pais">Venezuela</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Maturín (MUN)" data-pais="Venezuela" onclick="seleccionarDestino('Maturín (MUN)', 'Venezuela')">
+                            <div class="dest-dot"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Maturín <span class="dest-codigo">(MUN)</span></span><span class="dest-pais">Venezuela</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Caracas (CCS)" data-pais="Venezuela" onclick="seleccionarDestino('Caracas (CCS)', 'Venezuela')">
+                            <div class="dest-dot"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Caracas <span class="dest-codigo">(CCS)</span></span><span class="dest-pais">Venezuela</span></div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Columna Internacionales -->
+                <div class="modal-columna">
+                    <div class="columna-header">
+                        <div class="col-icon internacional">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        </div>
+                        <h3>Internacionales</h3>
+                    </div>
+                    <ul class="lista-destinos" id="lista-internacionales">
+                        <li class="dest-item" data-valor="Bridgetown (BGI)" data-pais="Barbados" onclick="seleccionarDestino('Bridgetown (BGI)', 'Barbados')">
+                            <div class="dest-dot intl"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Bridgetown <span class="dest-codigo">(BGI)</span></span><span class="dest-pais">Barbados</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Cancún (CUN)" data-pais="México" onclick="seleccionarDestino('Cancún (CUN)', 'México')">
+                            <div class="dest-dot intl"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Cancún <span class="dest-codigo">(CUN)</span></span><span class="dest-pais">México</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="La Habana (HAV)" data-pais="Cuba" onclick="seleccionarDestino('La Habana (HAV)', 'Cuba')">
+                            <div class="dest-dot intl"></div>
+                            <div class="dest-info"><span class="dest-ciudad">La Habana <span class="dest-codigo">(HAV)</span></span><span class="dest-pais">Cuba</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Managua (MGA)" data-pais="Nicaragua" onclick="seleccionarDestino('Managua (MGA)', 'Nicaragua')">
+                            <div class="dest-dot intl"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Managua <span class="dest-codigo">(MGA)</span></span><span class="dest-pais">Nicaragua</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Santa Lucía (NLU)" data-pais="México" onclick="seleccionarDestino('Santa Lucía (NLU)', 'México')">
+                            <div class="dest-dot intl"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Santa Lucía <span class="dest-codigo">(NLU)</span></span><span class="dest-pais">México</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Buenos Aires (EZE)" data-pais="Argentina" onclick="seleccionarDestino('Buenos Aires (EZE)', 'Argentina')">
+                            <div class="dest-dot intl"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Buenos Aires <span class="dest-codigo">(EZE)</span></span><span class="dest-pais">Argentina</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Bogotá (BOG)" data-pais="Colombia" onclick="seleccionarDestino('Bogotá (BOG)', 'Colombia')">
+                            <div class="dest-dot intl"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Bogotá <span class="dest-codigo">(BOG)</span></span><span class="dest-pais">Colombia</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Madrid (MAD)" data-pais="España" onclick="seleccionarDestino('Madrid (MAD)', 'España')">
+                            <div class="dest-dot intl"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Madrid <span class="dest-codigo">(MAD)</span></span><span class="dest-pais">España</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Miami (MIA)" data-pais="Estados Unidos" onclick="seleccionarDestino('Miami (MIA)', 'Estados Unidos')">
+                            <div class="dest-dot intl"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Miami <span class="dest-codigo">(MIA)</span></span><span class="dest-pais">Estados Unidos</span></div>
+                        </li>
+                        <li class="dest-item" data-valor="Ciudad de Panamá (PTY)" data-pais="Panamá" onclick="seleccionarDestino('Ciudad de Panamá (PTY)', 'Panamá')">
+                            <div class="dest-dot intl"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Ciudad de Panamá <span class="dest-codigo">(PTY)</span></span><span class="dest-pais">Panamá</span></div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="site-footer">
+        <div class="footer-nav">
+            <a href="#" onclick="mostrarPaso(1)">Inicio</a>
+            <span class="footer-sep">|</span>
+            <a href="#" onclick="mostrarPaso(1)">Reservar Vuelo</a>
+            <span class="footer-sep">|</span>
+            <a href="#" onclick="mostrarSeccion('itinerario')">Itinerario</a>
+            <span class="footer-sep">|</span>
+            <a href="#" onclick="mostrarSeccion('faq')">Preguntas Frecuentes</a>
+        </div>
+        <div class="footer-copy">
+            <div class="footer-logo-mini">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>
+            </div>
+            <p>COPYRIGHT &copy; <span id="footer-year"></span> &mdash; TODOS LOS DERECHOS RESERVADOS &mdash; CANAIMA AIRLINES, C.A. J-12345678-0</p>
+        </div>
+    </footer>
+
+    <script>document.getElementById('footer-year').textContent = new Date().getFullYear();</script>
     <script src="script.js"></script>
 </body>
 </html>
