@@ -26,6 +26,7 @@
                 <li><a href="#" onclick="mostrarPaso(1)">Inicio</a></li>
                 <li><a href="#" onclick="mostrarPaso(1)">Reserva</a></li>
                 <li><a href="#" onclick="mostrarSeccion('itinerario')">Itinerario</a></li>
+                <li><a href="#" onclick="mostrarSeccion('destinos')">Destinos</a></li>
                 <li><a href="#" onclick="mostrarSeccion('faq')">Preguntas Frecuentes</a></li>
             </ul>
         </nav>
@@ -59,14 +60,16 @@
                         <input type="text" id="destino-select" placeholder="Hacia" readonly style="cursor:pointer;">
                     </div>
 
-                    <div class="input-group">
+                    <div class="input-group calendario-wrapper">
                         <span class="icon">📅</span>
-                        <input type="text" placeholder="Ida" onfocus="(this.type='date')" onblur="(this.type='text')">
+                        <input type="text" id="fecha-ida" placeholder="Ida" readonly onclick="toggleCalendario('ida')">
+                        <div class="calendario-popup" id="cal-ida"></div>
                     </div>
 
-                    <div class="input-group" id="vuelta-group">
+                    <div class="input-group calendario-wrapper" id="vuelta-group">
                         <span class="icon">📅</span>
-                        <input type="text" placeholder="Vuelta" onfocus="(this.type='date')" onblur="(this.type='text')">
+                        <input type="text" id="fecha-vuelta" placeholder="Vuelta" readonly onclick="toggleCalendario('vuelta')">
+                        <div class="calendario-popup" id="cal-vuelta"></div>
                     </div>
 
                     <div class="input-group passenger-dropdown" id="dropdown-pasajeros">
@@ -135,7 +138,17 @@
                 </div>
             <div class="acciones">
                 <button class="btn-nav" onclick="mostrarPaso(1)">Volver</button>
-                <button class="btn-primario" onclick="confirmarPasajeros()">Siguiente: Asientos</button>
+                <button class="btn-primario" onclick="confirmarPasajeros()">Siguiente: Restricciones</button>
+            </div>
+        </section>
+
+        <section id="paso-restricciones" class="hidden content-card">
+            <h2>Restricciones de Asiento</h2>
+            <p class="restricciones-sub">Complete la siguiente información para asignar un asiento seguro y adecuado. Las respuestas pueden afectar los asientos disponibles.</p>
+            <div id="contenedor-restricciones"></div>
+            <div class="acciones">
+                <button class="btn-nav" onclick="mostrarPaso(3)">Volver</button>
+                <button class="btn-primario" onclick="confirmarRestricciones()">Ver Asientos</button>
             </div>
         </section>
 
@@ -145,14 +158,15 @@
                 <div class="item-leyenda"><span class="box disponible"></span> Disponible</div>
                 <div class="item-leyenda"><span class="box ocupado"></span> Ocupado</div>
                 <div class="item-leyenda"><span class="box seleccionado"></span> Tu Selección</div>
+                <div class="item-leyenda"><span class="box emergencia"></span> Salida de Emergencia</div>
+                <div class="item-leyenda"><span class="box emergencia-bloqueado"></span> Emergencia (restringido)</div>
             </div>
             
             <div id="mapa-avion-container" class="avion">
                 </div>
 
             <div class="acciones">
-                <button class="btn-nav" onclick="mostrarPaso(3)">Volver</button>
-                <button class="btn-primario" onclick="finalizarReserva()">Finalizar Reserva</button>
+                <button class="btn-nav" onclick="mostrarPaso(5)">Volver</button>
             </div>
         </section>
 
@@ -174,20 +188,12 @@
                 </div>
             </div>
         </section>
-        <section id="seccion-admin" class="hidden content-card">
-    <h2>Panel de Control - Canaima Airlines</h2>
-    <div class="admin-stats">
-        <div class="stat-box">
-            <h3>Vuelos Registrados</h3>
-            <p id="admin-total-vuelos">0</p>
-        </div>
-        <div class="stat-box">
-            <h3>Asientos Ocupados</h3>
-            <p id="admin-asientos-total">0</p>
-        </div>
-    </div>
-    <button class="btn-nav" onclick="resetearSistema()">Resetear Base de Datos</button>
-</section>
+        <section id="seccion-destinos" class="hidden content-card">
+            <h2>Nuestros Destinos</h2>
+            <p class="destinos-sub">Explora los destinos que Canaima Airlines tiene para ti</p>
+            <div id="grid-destinos" class="destinos-grid"></div>
+        </section>
+        <section id="seccion-admin" class="hidden"></section>
     </div>
 
     <!-- MODAL DE SELECCIÓN DE DESTINOS -->
@@ -265,6 +271,10 @@
                             <div class="dest-dot"></div>
                             <div class="dest-info"><span class="dest-ciudad">Maturín <span class="dest-codigo">(MUN)</span></span><span class="dest-pais">Venezuela</span></div>
                         </li>
+                        <li class="dest-item" data-valor="Valencia (VLN)" data-pais="Venezuela" onclick="seleccionarDestino('Valencia (VLN)', 'Venezuela')">
+                            <div class="dest-dot"></div>
+                            <div class="dest-info"><span class="dest-ciudad">Valencia <span class="dest-codigo">(VLN)</span></span><span class="dest-pais">Venezuela</span></div>
+                        </li>
                         <li class="dest-item" data-valor="Caracas (CCS)" data-pais="Venezuela" onclick="seleccionarDestino('Caracas (CCS)', 'Venezuela')">
                             <div class="dest-dot"></div>
                             <div class="dest-info"><span class="dest-ciudad">Caracas <span class="dest-codigo">(CCS)</span></span><span class="dest-pais">Venezuela</span></div>
@@ -336,6 +346,8 @@
             <span class="footer-sep">|</span>
             <a href="#" onclick="mostrarSeccion('itinerario')">Itinerario</a>
             <span class="footer-sep">|</span>
+            <a href="#" onclick="mostrarSeccion('destinos')">Destinos</a>
+            <span class="footer-sep">|</span>
             <a href="#" onclick="mostrarSeccion('faq')">Preguntas Frecuentes</a>
         </div>
         <div class="footer-copy">
@@ -348,5 +360,6 @@
 
     <script>document.getElementById('footer-year').textContent = new Date().getFullYear();</script>
     <script src="script.js"></script>
+    <script src="admin.js"></script>
 </body>
 </html>

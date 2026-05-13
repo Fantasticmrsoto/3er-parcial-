@@ -181,20 +181,20 @@ input:checked + .slider:before { transform: translateX(20px); }
 /* Botón Buscar Integrado */
 .btn-buscar {
     flex: 0 0 auto;
-    background: linear-gradient(90deg, #ffcc66 0%, #ff99cc 100%);
+    background: #0052cc;
     border: none;
     padding: 0 40px;
-    color: #555;
+    color: #fff;
     font-weight: bold;
     font-size: 16px;
     cursor: pointer;
     border-radius: 0 8px 8px 0;
     margin: 0;
     height: 100%;
-    transition: opacity 0.3s;
+    transition: background 0.2s;
 }
 
-.btn-buscar:hover { opacity: 0.9; }
+.btn-buscar:hover { background: #0747a6; }
 
 /* --- 4. SELECTOR DE PASAJEROS (COMPACTO) --- */
 .passenger-dropdown {
@@ -236,9 +236,9 @@ input:checked + .slider:before { transform: translateX(20px); }
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    border: 1px solid #ff6600;
-    background: white;
-    color: #ff6600;
+    border: 1px solid #0052cc;
+    background: #0052cc;
+    color: #fff;
     font-size: 18px;
     cursor: pointer;
     display: flex;
@@ -247,7 +247,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     padding: 0;
 }
 
-.btn-step:hover { background: #070707; }
+.btn-step:hover { background: #0747a6; border-color: #0747a6; }
 
 .p-controls input {
     width: 25px;
@@ -285,6 +285,54 @@ input:checked + .slider:before { transform: translateX(20px); }
 .seleccionado { background-color: #007bff; color: white; }
 .pasillo { width: 25px; }
 
+/* Asientos de salida de emergencia */
+.asiento.emergencia {
+    background-color: #e67e00;
+    color: white;
+    border: 2px solid #b35900;
+    position: relative;
+}
+.asiento.emergencia:hover {
+    background-color: #cf6d00;
+}
+.asiento.emergencia-bloqueado {
+    background-color: #f5a623;
+    color: white;
+    cursor: not-allowed;
+    opacity: 0.6;
+    border: 2px dashed #b35900;
+}
+.box.emergencia {
+    background-color: #e67e00;
+    border: 2px solid #b35900;
+}
+.box.emergencia-bloqueado {
+    background-color: #f5a623;
+    border: 2px dashed #b35900;
+    opacity: 0.7;
+}
+
+.fila-con-emergencia {
+    position: relative;
+    border-top: 2px solid #e67e00;
+    padding-top: 6px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.fila-emergencia-label {
+    width: 100%;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #e67e00;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
 /* Tabla de Itinerario */
 table { width: 100%; border-collapse: collapse; margin-top: 20px; }
 th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
@@ -295,7 +343,6 @@ th { background-color: #f8f8f8; color: #ff6600; }
     position: relative;
     width: 100%;
     height: 500px; /* Altura aumentada para mejor impacto visual */
-    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -309,6 +356,7 @@ th { background-color: #f8f8f8; color: #ff6600; }
     width: 100%;
     height: 100%;
     z-index: 1;
+    overflow: hidden;
 }
 
 .slide {
@@ -692,3 +740,606 @@ th { background-color: #f8f8f8; color: #ff6600; }
 
 /* Ajuste de los input-group para mostrar cursor pointer */
 .input-group input[readonly] { cursor: pointer; }
+
+/* --- 6. GALERÍA DE DESTINOS --- */
+.destinos-sub {
+    color: #666;
+    margin-bottom: 24px;
+    font-size: 15px;
+}
+
+.destinos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.destino-card {
+    border-radius: 14px;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+    text-align: left;
+}
+
+.destino-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+}
+
+.destino-img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+}
+
+.destino-body {
+    padding: 14px 16px 16px;
+}
+
+.destino-titulo {
+    font-size: 16px;
+    font-weight: 700;
+    color: #172b4d;
+    margin: 0 0 2px;
+}
+
+.destino-titulo .destino-codigo {
+    font-weight: 400;
+    color: #8fa8d4;
+    font-size: 13px;
+}
+
+.destino-pais {
+    font-size: 12px;
+    color: #0052cc;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.destino-descripcion {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.destino-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.destino-badge.nacional {
+    background: #e6f0ff;
+    color: #0052cc;
+}
+
+.destino-badge.internacional {
+    background: #e6f7ff;
+    color: #0099e6;
+}
+
+/* --- 7. CALENDARIO PERSONALIZADO --- */
+.calendario-wrapper {
+    position: relative;
+}
+
+.calendario-popup {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    z-index: 3000;
+    padding: 12px;
+    width: 260px;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 4px;
+}
+
+.calendario-popup.show {
+    display: block;
+}
+
+.cal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 0 4px;
+}
+
+.cal-header .cal-titulo {
+    font-weight: 700;
+    font-size: 15px;
+    color: #172b4d;
+}
+
+.cal-nav {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: #f0f5ff;
+    color: #0052cc;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.cal-nav:hover {
+    background: #0052cc;
+    color: white;
+}
+
+.cal-grid {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.cal-grid th {
+    font-size: 11px;
+    color: #8fa8d4;
+    font-weight: 700;
+    padding: 4px 0;
+    text-align: center;
+    background: transparent;
+    border: none;
+}
+
+.cal-grid td {
+    padding: 2px;
+    text-align: center;
+    border: none;
+}
+
+.cal-dia {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #172b4d;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    transition: background 0.15s;
+}
+
+.cal-dia:hover:not(.cal-dia-disabled) {
+    background: #e6f0ff;
+    color: #0052cc;
+}
+
+.cal-dia-disabled {
+    color: #d0d0d0;
+    cursor: not-allowed;
+}
+
+.cal-dia-disabled:hover {
+    background: transparent;
+}
+
+.cal-dia-sin-vuelo {
+    color: #e0c0c0;
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
+
+.cal-dia-sin-vuelo:hover {
+    background: transparent;
+}
+
+.cal-dia-seleccionado {
+    background: #0052cc !important;
+    color: white !important;
+    font-weight: 700;
+}
+
+.cal-info {
+    font-size: 11px;
+    color: #8fa8d4;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+    text-align: center;
+}
+
+/* --- 8. FORMULARIO DE RESTRICCIONES --- */
+.restricciones-sub {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.card-restriccion {
+    background: #f8faff;
+    border: 1px solid #e0e8f5;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.card-restriccion h3 {
+    margin: 0 0 4px;
+    color: #172b4d;
+    font-size: 18px;
+}
+
+.card-restriccion h4 {
+    color: #0052cc;
+    font-size: 14px;
+    margin: 18px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #e0e8f5;
+}
+
+.card-restriccion label {
+    display: block;
+    font-size: 13px;
+    color: #333;
+    margin-bottom: 4px;
+    cursor: pointer;
+}
+
+.card-restriccion input[type="number"] {
+    width: 70px;
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.card-restriccion .radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-left: 8px;
+    margin-bottom: 10px;
+}
+
+.card-restriccion .radio-group label {
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.card-restriccion .radio-group input[type="radio"] {
+    accent-color: #0052cc;
+}
+
+.card-restriccion .pregunta {
+    font-weight: 600;
+    font-size: 13px;
+    color: #222;
+    margin: 10px 0 6px;
+}
+
+.card-restriccion .condicional {
+    display: none;
+    padding-left: 20px;
+    border-left: 3px solid #0052cc;
+    margin: 6px 0 10px;
+}
+
+.card-restriccion .condicional.visible {
+    display: block;
+}
+/* ====================================================
+   MAPA DE ASIENTOS — ESTILOS MEJORADOS
+   ==================================================== */
+
+/* Contenedor principal del mapa */
+#mapa-avion-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #f7faff;
+    border-radius: 16px;
+    padding: 20px 16px 28px;
+    max-width: 520px;
+    margin: 0 auto;
+    border: 1px solid #dce8ff;
+    font-family: sans-serif;
+}
+
+/* Nariz del avión */
+.avion-nariz {
+    width: 80px;
+    margin-bottom: 6px;
+}
+.avion-nariz svg { width: 100%; height: auto; }
+
+/* Cola del avión */
+.avion-cola {
+    width: 60px;
+    height: 12px;
+    background: linear-gradient(to bottom, #dce8ff, transparent);
+    border-radius: 0 0 30px 30px;
+    margin-top: 4px;
+}
+
+/* Cabecera de columnas */
+.mapa-header-cols {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin-bottom: 6px;
+    width: 100%;
+    justify-content: center;
+}
+
+.col-label {
+    width: 38px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #0052cc;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* En clase Club, B y E no existen: ocultar sus encabezados según contexto */
+.col-label-club-b,
+.col-label-club-e {
+    color: transparent;
+    pointer-events: none;
+}
+
+.col-pasillo-label {
+    width: 26px;
+}
+
+/* Separadores de sección */
+.seccion-label {
+    width: 100%;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 5px 16px;
+    border-radius: 6px;
+    margin: 8px 0 4px;
+}
+
+.seccion-label.club {
+    background: linear-gradient(90deg, #fff7e0, #ffe8b0);
+    color: #8a5a00;
+    border: 1px solid #f0c040;
+}
+
+.seccion-label.turista {
+    background: linear-gradient(90deg, #e6f0ff, #d0e4ff);
+    color: #0052cc;
+    border: 1px solid #b3cef5;
+}
+
+/* Filas */
+.fila {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    margin-bottom: 3px;
+    width: 100%;
+}
+
+.fila-club {
+    background: rgba(255, 230, 100, 0.08);
+    border-radius: 6px;
+    padding: 2px 4px;
+}
+
+.fila-turista {
+    padding: 1px 4px;
+}
+
+/* Número de fila */
+.fila-numero {
+    width: 22px;
+    text-align: right;
+    font-size: 10px;
+    color: #8fa8d4;
+    font-weight: 600;
+    flex-shrink: 0;
+    margin-right: 2px;
+}
+
+/* Asientos base */
+.asiento {
+    width: 38px;
+    height: 36px;
+    margin: 1px;
+    border: 2px solid transparent;
+    border-radius: 6px 6px 4px 4px;
+    cursor: pointer;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    transition: transform 0.1s, box-shadow 0.15s, background 0.15s;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Forma de sillón: respaldo superior */
+.asiento::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: 4px;
+    right: 4px;
+    height: 4px;
+    background: inherit;
+    border-radius: 3px 3px 0 0;
+    opacity: 0.8;
+    filter: brightness(0.85);
+}
+
+/* Asiento clase Club — más grande */
+.asiento.asiento-club {
+    width: 46px;
+    height: 42px;
+    font-size: 10px;
+    border-radius: 8px 8px 5px 5px;
+}
+
+/* Placeholder para alinear filas Club con Turista */
+.asiento-placeholder {
+    width: 38px;
+    height: 36px;
+    margin: 1px;
+    background: transparent;
+    flex-shrink: 0;
+}
+
+/* Estados */
+.disponible {
+    background-color: #22c55e;
+    color: white;
+    border-color: #16a34a;
+}
+.disponible:hover {
+    background-color: #16a34a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35);
+}
+
+.ocupado {
+    background-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    border-color: #d1d5db;
+}
+.ocupado::before { background: #d1d5db; }
+
+.seleccionado {
+    background-color: #2563eb;
+    color: white;
+    border-color: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.45);
+}
+.seleccionado::before { background: #1d4ed8; }
+
+.asiento.emergencia {
+    background-color: #f97316;
+    color: white;
+    border-color: #ea580c;
+}
+.asiento.emergencia:hover {
+    background-color: #ea580c;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(249, 115, 22, 0.4);
+}
+
+.asiento.emergencia-bloqueado {
+    background-color: #fde68a;
+    color: #92400e;
+    cursor: not-allowed;
+    border: 2px dashed #f59e0b;
+}
+
+/* Pasillo */
+.pasillo {
+    width: 26px;
+    flex-shrink: 0;
+}
+
+/* Filas de emergencia */
+.fila-con-emergencia {
+    flex-wrap: wrap;
+    border-top: 2px solid #f97316;
+    padding-top: 5px;
+    margin-top: 5px;
+}
+
+.fila-emergencia-label {
+    width: 100%;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 800;
+    color: #f97316;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+}
+
+/* Leyenda */
+.leyenda-asientos {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 18px;
+    margin-top: 18px;
+    padding: 12px 16px;
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #e0e8f5;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.leyenda-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #444;
+    font-weight: 500;
+}
+
+.leyenda-box {
+    width: 18px;
+    height: 16px;
+    border-radius: 4px;
+    display: inline-block;
+    flex-shrink: 0;
+    border: 2px solid transparent;
+}
+.leyenda-box.disponible { background: #22c55e; border-color: #16a34a; }
+.leyenda-box.seleccionado { background: #2563eb; border-color: #1d4ed8; }
+.leyenda-box.ocupado { background: #e5e7eb; border-color: #d1d5db; }
+.leyenda-box.emergencia { background: #f97316; border-color: #ea580c; }
+.leyenda-box.emergencia-bloqueado { background: #fde68a; border: 2px dashed #f59e0b; }
+
+/* Contador de asientos seleccionados */
+.contador-asientos {
+    margin-top: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #0052cc;
+    background: #e6f0ff;
+    border-radius: 8px;
+    padding: 8px 20px;
+    text-align: center;
+    transition: background 0.3s, color 0.3s;
+}
+
+.contador-asientos.contador-alerta {
+    background: #fee2e2;
+    color: #dc2626;
+}
