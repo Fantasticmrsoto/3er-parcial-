@@ -26,6 +26,7 @@
                 <li><a href="#" onclick="mostrarPaso(1); return false;">Inicio</a></li>
                 <li><a href="#" onclick="mostrarSeccion('itinerario')">Itinerario</a></li>
                 <li><a href="#" onclick="mostrarSeccion('faq')">Preguntas Frecuentes</a></li>
+                <li><a href="#" class="nav-admin-btn" onclick="mostrarSeccion('admin'); return false;">Admin</a></li>
             </ul>
         </nav>
     </header>
@@ -45,6 +46,7 @@
                         <span class="slider round"></span>
                     </label>
                     <span id="label-tipo-viaje" class="label-text">Ida y vuelta</span>
+                    <button class="btn-checkin" onclick="abrirModalWebCheckin()">🖥 Web Check-In</button>
                 </div>
 
                 <div class="search-bar">
@@ -349,6 +351,39 @@
                             <div class="dest-info"><span class="dest-ciudad">Ciudad de Panamá <span class="dest-codigo">(PTY)</span></span><span class="dest-pais">Panamá</span></div>
                         </li>
                     </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL WEB CHECK-IN -->
+    <div id="modal-webcheckin" class="modal-overlay hidden" onclick="cerrarModalWebCheckinSiOverlay(event)">
+        <div class="modal-checkin">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div class="modal-icon-wrapper">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <div>
+                        <h2>Web Check-In</h2>
+                        <p>Confirma o cancela tu reserva</p>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="cerrarModalWebCheckin()">✕</button>
+            </div>
+            <div class="modal-checkin-body">
+                <div class="checkin-form-group">
+                    <label>Código de Reserva</label>
+                    <input type="text" id="checkin-codigo" placeholder="Ej: RES-1234567890" class="checkin-input">
+                </div>
+                <div class="checkin-form-group">
+                    <label>Nombre del Pasajero</label>
+                    <input type="text" id="checkin-nombre" placeholder="Ingresa tu nombre completo" class="checkin-input">
+                </div>
+                <p id="checkin-mensaje" class="checkin-mensaje hidden"></p>
+                <div class="checkin-acciones">
+                    <button class="btn-checkin-confirmar" onclick="procesarWebCheckin('confirmar')">✓ Confirmar Check-In</button>
+                    <button class="btn-checkin-cancelar" onclick="procesarWebCheckin('cancelar')">✕ Cancelar Reserva</button>
                 </div>
             </div>
         </div>

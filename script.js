@@ -330,6 +330,7 @@ function mostrarPaso(paso) {
         // Mostrar y renderizar la sección destinos solo en inicio
         if (seccionDestinos) seccionDestinos.classList.remove('hidden');
         renderizarDestinos();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (paso === 5) {
         if (heroVisual) heroVisual.classList.add('hidden');
         if (seccionDestinos) seccionDestinos.classList.add('hidden');
@@ -357,6 +358,12 @@ function mostrarSeccion(idSeccion) {
         document.getElementById('seccion-itinerario').scrollIntoView({ behavior: 'smooth' });
     } else if (idSeccion === 'faq') {
         document.getElementById('seccion-faq').classList.remove('hidden');
+    } else if (idSeccion === 'admin') {
+        const secAdmin = document.getElementById('seccion-admin');
+        if (secAdmin) {
+            secAdmin.classList.remove('hidden');
+            if (typeof inicializarAdmin === 'function') inicializarAdmin();
+        }
     }
 }
 
@@ -452,6 +459,28 @@ function procesarBusqueda() {
     if (origenInput === destinoSelect) { alert("⚠️ El origen y el destino no pueden ser la misma ciudad."); return; }
     if ((ninos > 0 || infantes > 0) && adultos === 0) { alert("Los menores requieren un adulto acompañante."); return; }
     if (total === 0) { alert("Seleccione al menos un pasajero."); return; }
+
+    // Verificar disponibilidad contra vuelos del itinerario admin
+    const syncRaw = localStorage.getItem('itinerarioSync');
+    if (syncRaw) {
+        try {
+            const vuelosAdmin = JSON.parse(syncRaw);
+            // Normalizar para comparar: extraer solo el nombre de ciudad sin código
+            const normalizar = str => str.replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+            const origenNorm = normalizar(origenInput);
+            const destinoNorm = normalizar(destinoSelect);
+            const disponible = vuelosAdmin.some(v => {
+                const vOrigenNorm = normalizar(v.origen || '');
+                const vDestinoNorm = normalizar(v.destino || '');
+                const estadoOk = !v.estado || (v.estado !== 'Cancelado' && v.estado !== 'Aterrizado');
+                return vOrigenNorm === origenNorm && vDestinoNorm === destinoNorm && estadoOk;
+            });
+            if (!disponible) {
+                alert("✈️ Vuelo no disponible. No existe un vuelo activo para la ruta seleccionada. Consulte el itinerario para ver los vuelos disponibles.");
+                return;
+            }
+        } catch(e) {}
+    }
 
     reserva.origen = origenInput;
     reserva.destino = destinoSelect;
@@ -918,11 +947,37 @@ function finalizarReserva() {
 function renderizarItinerario() {
     const contenedor = document.getElementById('tabla-vuelos');
 
-    // Intentar leer vuelos sincronizados desde el panel admin
-    const syncRaw = localStorage.getItem('itinerarioSync');
-    let vuelos = baseDeDatosVuelos;
-    if (syncRaw) {
-        try { vuelos = JSON.parse(syncRaw); } catch(e) {}
+    // Prioridad: vuelosAdmin (fuente de verdad) → itinerarioSync → defaults
+    let vuelos;
+    const adminRaw = localStorage.getItem('vuelosAdmin');
+    const syncRaw  = localStorage.getItem('itinerarioSync');
+
+    if (adminRaw) {
+        try {
+            const va = JSON.parse(adminRaw);
+            // Validar que tenga la estructura correcta (origen existe)
+            if (va.length && va[0].origen) {
+                vuelos = va.map(v => ({
+                    nro: v.id, origen: v.origen, destino: v.destino,
+                    salida: v.salida, fecha: v.fecha, estado: v.estado
+                }));
+            }
+        } catch(e) {}
+    }
+    if (!vuelos && syncRaw) {
+        try {
+            const sv = JSON.parse(syncRaw);
+            if (sv.length && sv[0].origen) vuelos = sv;
+        } catch(e) {}
+    }
+    if (!vuelos) {
+        const hoy = new Date().toISOString().split('T')[0];
+        vuelos = [
+            { nro: 'AV102', origen: 'Caracas (CCS)', destino: 'Madrid (MAD)',      salida: '08:00', fecha: hoy, estado: 'A tiempo'   },
+            { nro: 'AV205', origen: 'Caracas (CCS)', destino: 'Maracaibo (MAR)',   salida: '11:30', fecha: hoy, estado: 'Embarcando' },
+            { nro: 'AV309', origen: 'Caracas (CCS)', destino: 'Buenos Aires (EZE)',salida: '15:00', fecha: hoy, estado: 'A tiempo'   },
+            { nro: 'AV412', origen: 'Caracas (CCS)', destino: 'Bogotá (BOG)',      salida: '18:45', fecha: hoy, estado: 'Retrasado'  },
+        ];
     }
 
     const coloresEstado = {
@@ -931,6 +986,14 @@ function renderizarItinerario() {
         'Retrasado':  { color: '#854d0e', bg: '#fef9c3' },
         'Cancelado':  { color: '#991b1b', bg: '#fee2e2' },
         'Aterrizado': { color: '#374151', bg: '#f3f4f6' },
+    };
+
+    // Formatear fecha de YYYY-MM-DD a DD/MM/YYYY
+    const fmtFecha = f => {
+        if (!f || f === '—') return '—';
+        if (f.includes('/')) return f; // ya formateada
+        const [y, m, d] = f.split('-');
+        return `${d}/${m}/${y}`;
     };
 
     let tabla = `
@@ -948,20 +1011,22 @@ function renderizarItinerario() {
             <tbody>`;
 
     vuelos.forEach(v => {
-        const esAdmin = !!v.origen; // los vuelos del admin tienen campo origen
-        const origen = esAdmin ? v.origen : (v.origen || '—');
-        const destino = esAdmin ? v.destino : (v.destino || '—');
-        // Si la hora viene en formato 24h (admin) la convertimos; si ya es 12h la dejamos
-        const hora = esAdmin
-            ? formatearHora12Admin(v.salida)
-            : (v.salida || '—');
-        const fecha = esAdmin && v.fecha ? v.fecha : '—';
-        const estado = v.estado || 'A tiempo';
-        const col = coloresEstado[estado] || coloresEstado['A tiempo'];
+        const origen  = v.origen  || '—';
+        const destino = v.destino || '—';
+        const hora    = formatearHora12Admin(v.salida);
+        const fecha   = fmtFecha(v.fecha);
+        const estado  = v.estado  || 'A tiempo';
+        const col     = coloresEstado[estado] || coloresEstado['A tiempo'];
+        const id      = v.nro || v.id || '—';
 
         tabla += `
             <tr>
-                <td><strong>${v.nro || v.id || '—'}</strong></td>
+                <td><strong style="
+                    display:inline-block;
+                    background:#0d2d6e; color:#fff;
+                    padding:3px 10px; border-radius:20px;
+                    font-size:13px; letter-spacing:.3px;
+                ">${id}</strong></td>
                 <td>${origen}</td>
                 <td>${destino}</td>
                 <td>${hora}</td>
@@ -983,21 +1048,25 @@ function renderizarItinerario() {
     contenedor.innerHTML = tabla + `</tbody></table>`;
 }
 
-// Helper: convierte "15:00" → "03:00 PM" (para mostrar en itinerario, igual que admin)
-function formatearHora12Admin(hora24) {
-    if (!hora24 || !hora24.includes(':')) return hora24 || '—';
-    let [h, m] = hora24.split(':').map(Number);
+// Helper: convierte "15:00" → "3:00 PM". También acepta "08:00 AM" (ya formateado).
+function formatearHora12Admin(hora) {
+    if (!hora) return '—';
+    // Si ya viene con AM/PM, devolverla limpia
+    if (/AM|PM/i.test(hora)) {
+        return hora.replace(/(\d+):(\d+)\s*(AM|PM)/i, (_, h, m, ap) =>
+            `${parseInt(h)}:${m} ${ap.toUpperCase()}`);
+    }
+    if (!hora.includes(':')) return hora;
+    let [h, m] = hora.split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return hora;
     const ampm = h >= 12 ? 'PM' : 'AM';
     h = h % 12 || 12;
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;
+    return `${h}:${String(m).padStart(2,'0')} ${ampm}`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     // Siempre arrancar en la vista inicial (hero + paso 1) al cargar/recargar
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('role') !== 'admin') {
-        mostrarPaso(1);
-    }
+    mostrarPaso(1);
 
     inicializarCalendarios();
     // Renderizar destinos siempre visibles al cargar
@@ -1110,6 +1179,96 @@ function filtrarDestinos() {
         const texto = item.dataset.valor.toLowerCase() + item.dataset.pais.toLowerCase();
         item.classList.toggle('oculto', q.length > 0 && !texto.includes(q));
     });
+}
+
+// --- 9. MÓDULO WEB CHECK-IN ---
+
+function abrirModalWebCheckin() {
+    document.getElementById('checkin-codigo').value = '';
+    document.getElementById('checkin-nombre').value = '';
+    const msg = document.getElementById('checkin-mensaje');
+    msg.classList.add('hidden');
+    msg.className = 'checkin-mensaje hidden';
+    document.getElementById('modal-webcheckin').classList.remove('hidden');
+}
+
+function cerrarModalWebCheckin() {
+    document.getElementById('modal-webcheckin').classList.add('hidden');
+}
+
+function cerrarModalWebCheckinSiOverlay(event) {
+    if (event.target === document.getElementById('modal-webcheckin')) {
+        cerrarModalWebCheckin();
+    }
+}
+
+function procesarWebCheckin(accion) {
+    const codigo = document.getElementById('checkin-codigo').value.trim();
+    const nombre = document.getElementById('checkin-nombre').value.trim();
+    const msg = document.getElementById('checkin-mensaje');
+
+    if (!codigo || !nombre) {
+        mostrarMsgCheckin('Por favor ingresa el código de reserva y tu nombre.', 'error');
+        return;
+    }
+
+    const reservas = JSON.parse(localStorage.getItem('reservasAdmin')) || [];
+    const idx = reservas.findIndex(r => r.id === codigo);
+
+    if (idx === -1) {
+        mostrarMsgCheckin('No se encontró una reserva con ese código.', 'error');
+        return;
+    }
+
+    const reserva = reservas[idx];
+
+    // Verificar que el nombre coincida con algún pasajero
+    const pasajero = reserva.pasajeros.find(p =>
+        p.nombre.toLowerCase().trim() === nombre.toLowerCase().trim()
+    );
+
+    if (!pasajero) {
+        mostrarMsgCheckin('El nombre no coincide con ningún pasajero de esta reserva.', 'error');
+        return;
+    }
+
+    if (accion === 'confirmar') {
+        if (reserva.checkin === 'cancelado') {
+            mostrarMsgCheckin('❌ Esta reserva ya fue cancelada y los asientos fueron liberados. No es posible confirmar el check-in.', 'error');
+            return;
+        }
+        if (reserva.checkin === 'confirmado') {
+            mostrarMsgCheckin('✓ Tu check-in ya estaba confirmado. ¡Buen viaje!', 'exito');
+            return;
+        }
+        reserva.checkin = 'confirmado';
+        reserva.checkinFecha = new Date().toISOString();
+        reservas[idx] = reserva;
+        localStorage.setItem('reservasAdmin', JSON.stringify(reservas));
+        mostrarMsgCheckin('✓ Check-In confirmado exitosamente. ¡Buen viaje!', 'exito');
+    } else if (accion === 'cancelar') {
+        if (reserva.checkin === 'cancelado') {
+            mostrarMsgCheckin('Esta reserva ya fue cancelada anteriormente.', 'error');
+            return;
+        }
+        if (!confirm('¿Estás seguro de cancelar la reserva? Los asientos serán liberados y esta acción no se puede deshacer.')) return;
+        // Liberar asientos
+        const asientosOcupados = JSON.parse(localStorage.getItem('asientosOcupados')) || [];
+        const asientosActualizados = asientosOcupados.filter(a => !reserva.asientos.includes(a));
+        localStorage.setItem('asientosOcupados', JSON.stringify(asientosActualizados));
+
+        reserva.checkin = 'cancelado';
+        reserva.cancelacionFecha = new Date().toISOString();
+        reservas[idx] = reserva;
+        localStorage.setItem('reservasAdmin', JSON.stringify(reservas));
+        mostrarMsgCheckin('✓ Reserva cancelada exitosamente. Los asientos han sido liberados.', 'exito');
+    }
+}
+
+function mostrarMsgCheckin(texto, tipo) {
+    const msg = document.getElementById('checkin-mensaje');
+    msg.textContent = texto;
+    msg.className = 'checkin-mensaje ' + tipo;
 }
 
 // Ejecutar la verificación al cargar la página
