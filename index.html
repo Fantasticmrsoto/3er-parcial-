@@ -389,6 +389,39 @@
         </div>
     </div>
 
+    <!-- MODAL LOGIN ADMIN -->
+    <div id="modal-login-admin" class="modal-overlay hidden" onclick="cancelarLoginAdminSiOverlay(event)">
+        <div class="modal-checkin modal-login-admin-inner" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div class="modal-icon-wrapper">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 11c1.66 0 3-1.34 3-3S13.66 5 12 5 9 6.34 9 8s1.34 3 3 3z"/><path d="M3 20.5V19c0-2.76 2.24-5 5-5h8c2.76 0 5 2.24 5 5v1.5"/></svg>
+                    </div>
+                    <div>
+                        <h2>Acceso administración</h2>
+                        <p>Ingrese correo y contraseña</p>
+                    </div>
+                </div>
+                <button type="button" class="modal-close" onclick="cancelarLoginAdmin()">✕</button>
+            </div>
+            <form class="modal-checkin-body" id="form-login-admin" onsubmit="intentarLoginAdmin(); return false;">
+                <div class="checkin-form-group">
+                    <label for="admin-login-email">Correo electrónico</label>
+                    <input type="email" id="admin-login-email" class="checkin-input" placeholder="admin@airport.com" autocomplete="username" required>
+                </div>
+                <div class="checkin-form-group">
+                    <label for="admin-login-password">Contraseña</label>
+                    <input type="password" id="admin-login-password" class="checkin-input" placeholder="Contraseña" autocomplete="current-password" required>
+                </div>
+                <p id="admin-login-error" class="checkin-mensaje error hidden" role="alert"></p>
+                <div class="checkin-acciones">
+                    <button type="submit" class="btn-checkin-confirmar">Ingresar al panel</button>
+                    <button type="button" class="btn-checkin-cancelar" onclick="cancelarLoginAdmin()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- FOOTER -->
     <footer class="site-footer">
         <div class="footer-nav">

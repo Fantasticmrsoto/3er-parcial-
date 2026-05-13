@@ -10,8 +10,91 @@ const configAvion = {
     salidasEmergencia: ["1A", "1C", "1D", "1F", "10A", "10B", "10C", "10D", "10E", "10F"]
 };
 
-// Carga de persistencia: Asientos ocupados guardados en el navegador
-let asientosOcupadosGlobal = JSON.parse(localStorage.getItem('asientosOcupados')) || [...configAvion.asientosBloqueados];
+/** Asientos reservados por código de vuelo (cada vuelo tiene su propio mapa). */
+const STORAGE_ASIENTOS_POR_VUELO = 'asientosPorVuelo';
+
+function normalizarIdVuelo(id) {
+    return String(id || '').trim().toUpperCase();
+}
+
+function leerMapaAsientosPorVuelo() {
+    try {
+        const raw = localStorage.getItem(STORAGE_ASIENTOS_POR_VUELO);
+        if (raw) {
+            const obj = JSON.parse(raw);
+            if (obj && typeof obj === 'object' && !Array.isArray(obj)) return obj;
+        }
+        const leg = localStorage.getItem('asientosOcupados');
+        if (leg) {
+            const arr = JSON.parse(leg);
+            if (Array.isArray(arr)) {
+                localStorage.removeItem('asientosOcupados');
+            }
+        }
+    } catch (e) { /* ignore */ }
+    return {};
+}
+
+function guardarMapaAsientosPorVuelo(map) {
+    localStorage.setItem(STORAGE_ASIENTOS_POR_VUELO, JSON.stringify(map));
+}
+
+/** Asientos no disponibles para un vuelo: bloqueados de cabina + reservas de ese vuelo */
+function obtenerAsientosOcupadosParaVuelo(idVuelo) {
+    const id = normalizarIdVuelo(idVuelo);
+    const map = leerMapaAsientosPorVuelo();
+    const reservados = new Set(id && map[id] ? map[id] : []);
+    configAvion.asientosBloqueados.forEach(a => reservados.add(a));
+    return [...reservados];
+}
+
+function agregarAsientosOcupadosVuelo(idVuelo, asientosNuevos) {
+    const id = normalizarIdVuelo(idVuelo);
+    if (!id) return;
+    const map = leerMapaAsientosPorVuelo();
+    const set = new Set(map[id] || []);
+    (asientosNuevos || []).forEach(a => {
+        if (a && !configAvion.asientosBloqueados.includes(a)) set.add(a);
+    });
+    map[id] = [...set];
+    guardarMapaAsientosPorVuelo(map);
+}
+
+function liberarAsientosDeVuelo(idVuelo, lista) {
+    const id = normalizarIdVuelo(idVuelo);
+    if (!id || !lista || !lista.length) return;
+    const map = leerMapaAsientosPorVuelo();
+    const set = new Set(map[id] || []);
+    lista.forEach(a => set.delete(a));
+    map[id] = [...set];
+    guardarMapaAsientosPorVuelo(map);
+}
+
+/** Libera asientos de una reserva (usa vueloNro; si falta, intenta en todos los vuelos por compatibilidad). */
+function liberarAsientosReserva(reserva) {
+    const asientos = reserva.asientos || [];
+    if (!asientos.length) return;
+    const vid = normalizarIdVuelo(reserva.vueloNro);
+    if (vid) {
+        liberarAsientosDeVuelo(vid, asientos);
+        return;
+    }
+    const map = leerMapaAsientosPorVuelo();
+    Object.keys(map).forEach(k => liberarAsientosDeVuelo(k, asientos));
+}
+
+function contarTotalAsientosReservados() {
+    const map = leerMapaAsientosPorVuelo();
+    return Object.values(map).reduce((acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0), 0);
+}
+
+const METODOS_PAGO = [
+    { id: 'zelle', etiqueta: 'Zelle', detalle: 'Transferencia Zelle (USD)' },
+    { id: 'pago_movil', etiqueta: 'Pago Móvil', detalle: 'Pago Móvil (Bs.) — datos enviados por correo/SMS' },
+    { id: 'binance', etiqueta: 'Binance Pay', detalle: 'Binance Pay / cripto según instrucciones' }
+];
+
+// Asientos por vuelo: ver STORAGE_ASIENTOS_POR_VUELO y funciones obtener/agregar/liberar
 
 const baseDeDatosVuelos = [
     { nro: "AV102", destino: "España", salida: "08:00 AM", estado: "A tiempo" },
@@ -24,11 +107,15 @@ let reserva = {
     tipoViaje: "Ida y vuelta",
     origen: "",
     destino: "",
+    fechaIda: "",
+    fechaVuelta: "",
+    vueloItinerario: null,
     cantidadBoletos: 0,
     pasajeros: [],
     restricciones: [],
     asientos: [],
-    conteoCategorias: { adultos: 0, ninos: 0, infantes: 0, mayores: 0 }
+    conteoCategorias: { adultos: 0, ninos: 0, infantes: 0, mayores: 0 },
+    metodoPago: ""
 };
 
 // Días disponibles por destino (0=Dom, 1=Lun, ..., 6=Sáb)
@@ -131,6 +218,237 @@ const infoDestinos = [
       descripcion: "Capital panameña que une dos océanos, con un moderno skyline y el histórico Casco Viejo.",
       imagen: "https://images.unsplash.com/photo-1590523277543-a94eba7c0c8c?w=400&h=250&fit=crop" }
 ];
+
+const CODIGOS_IATA_INTERNACIONAL = new Set(
+    infoDestinos.filter(d => d.tipo === 'internacional').map(d => d.codigo)
+);
+
+function extraerCodigoIata(etiquetaCiudad) {
+    const m = String(etiquetaCiudad || '').match(/\(([A-Z]{3})\)/);
+    return m ? m[1] : '';
+}
+
+function rutaEsInternacional(origen, destino) {
+    return CODIGOS_IATA_INTERNACIONAL.has(extraerCodigoIata(origen))
+        || CODIGOS_IATA_INTERNACIONAL.has(extraerCodigoIata(destino));
+}
+
+/** Nacional con Los Roques o Canaima en origen o destino */
+function rutaNacionalRoquesOCanaima(origen, destino) {
+    if (rutaEsInternacional(origen, destino)) return false;
+    const pts = [extraerCodigoIata(origen), extraerCodigoIata(destino)];
+    return pts.includes('LRV') || pts.includes('CAJ');
+}
+
+function semillaPrecioRuta(origen, destino) {
+    const s = (extraerCodigoIata(origen) + extraerCodigoIata(destino)) || 'DF';
+    let n = 0;
+    for (let i = 0; i < s.length; i++) n += s.charCodeAt(i);
+    return n;
+}
+
+/**
+ * Total USD por pasajero para todo el viaje (solo ida o ida y vuelta).
+ * Club Económico siempre más barato que Clase Turista.
+ * - Internacional ida y vuelta (turista): ~600–900 USD/persona
+ * - Internacional solo ida: más barato que el equivalente ida y vuelta
+ * - Nacional Los Roques / Canaima: turista ida y vuelta hasta 450 USD/persona
+ * - Nacional resto: tarifas menores
+ */
+function totalUsdViajePorPersona(origen, destino, tipoViaje, claseCabina) {
+    const intl = rutaEsInternacional(origen, destino);
+    const idaYVuelta = tipoViaje === 'Ida y vuelta';
+    const seed = semillaPrecioRuta(origen, destino);
+
+    let turistaTotal;
+
+    if (intl) {
+        if (idaYVuelta) {
+            turistaTotal = 600 + (seed % 301);
+        } else {
+            const refRt = 600 + (seed % 301);
+            turistaTotal = Math.round(refRt * 0.54);
+            turistaTotal = Math.max(290, Math.min(turistaTotal, 490));
+        }
+    } else if (rutaNacionalRoquesOCanaima(origen, destino)) {
+        if (idaYVuelta) {
+            turistaTotal = 310 + (seed % 141);
+            if (turistaTotal > 450) turistaTotal = 450;
+        } else {
+            const topeRt = Math.min(450, 310 + (seed % 141));
+            turistaTotal = Math.round(topeRt * 0.52);
+            turistaTotal = Math.min(turistaTotal, 248);
+        }
+    } else {
+        if (idaYVuelta) {
+            turistaTotal = 165 + (seed % 121);
+            if (turistaTotal > 340) turistaTotal = 340;
+        } else {
+            turistaTotal = Math.round((165 + (seed % 121)) * 0.52);
+            turistaTotal = Math.min(turistaTotal, 185);
+        }
+    }
+
+    const multClub = 0.78;
+    const bruto = claseCabina === 'club' ? turistaTotal * multClub : turistaTotal;
+    return Math.round(bruto * 100) / 100;
+}
+
+// --- ITINERARIO (misma fuente que la tabla pública y el botón Buscar) ---
+
+function normalizarCiudadItinerario(str) {
+    return String(str || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+}
+
+/** ~30 vuelos en el mes actual, cubriendo la mayoría de orígenes/destinos. */
+function generarVuelosMesInicial() {
+    const ahora = new Date();
+    const y = ahora.getFullYear();
+    const m = ahora.getMonth();
+    const ultimo = new Date(y, m + 1, 0).getDate();
+    const CCS = 'Caracas (CCS)';
+    const rutas = [
+        [CCS, 'Madrid (MAD)'], [CCS, 'Miami (MIA)'], [CCS, 'Bogotá (BOG)'], [CCS, 'Buenos Aires (EZE)'],
+        [CCS, 'Ciudad de Panamá (PTY)'], [CCS, 'La Habana (HAV)'], [CCS, 'Cancún (CUN)'], [CCS, 'Managua (MGA)'],
+        [CCS, 'Bridgetown (BGI)'], [CCS, 'Santa Lucía (NLU)'], [CCS, 'Maracaibo (MAR)'], [CCS, 'Valencia (VLN)'],
+        ['Valencia (VLN)', 'Maracaibo (MAR)'], ['Maracaibo (MAR)', CCS], [CCS, 'Los Roques (LRV)'],
+        [CCS, 'Canaima (CAJ)'], [CCS, 'Barquisimeto (BRM)'], [CCS, 'Maturín (MUN)'], ['Barcelona (BLA)', CCS],
+        [CCS, 'Barinas (BNS)'], [CCS, 'Cumaná (CUM)'], [CCS, 'El Vigía (VIG)'], [CCS, 'La Fría (LFR)'],
+        ['Las Piedras (LSP)', CCS], ['Maturín (MUN)', CCS], [CCS, 'Barcelona (BLA)'], [CCS, 'Las Piedras (LSP)'],
+        ['Barinas (BNS)', CCS], ['El Vigía (VIG)', 'Maracaibo (MAR)'], ['La Fría (LFR)', CCS], ['Cumaná (CUM)', 'Valencia (VLN)'],
+        ['Barquisimeto (BRM)', 'Miami (MIA)'], ['Los Roques (LRV)', CCS], ['Canaima (CAJ)', CCS],
+        ['Bogotá (BOG)', CCS], [CCS, 'Cumaná (CUM)'], ['Valencia (VLN)', CCS]
+    ];
+    const horas = ['06:30', '08:15', '09:40', '11:00', '12:30', '14:15', '15:45', '17:00', '18:30', '20:00', '21:15'];
+    const estadosCiclo = ['A tiempo', 'A tiempo', 'Embarcando', 'A tiempo', 'Retrasado', 'A tiempo', 'A tiempo', 'A tiempo'];
+    const vuelos = [];
+    let num = 501;
+    for (let i = 0; i < 30; i++) {
+        const dia = 1 + ((i * 2) % ultimo);
+        const fecha = `${y}-${String(m + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+        const [o, d] = rutas[i % rutas.length];
+        vuelos.push({
+            id: `AV${num}`,
+            origen: o,
+            destino: d,
+            salida: horas[i % horas.length],
+            fecha,
+            estado: estadosCiclo[i % estadosCiclo.length],
+            capacidad: 128
+        });
+        num++;
+    }
+    return vuelos;
+}
+
+function persistirVuelosInicialesSiVacios(listaAdmin) {
+    if (!listaAdmin || !listaAdmin.length) return;
+    try {
+        const raw = localStorage.getItem('vuelosAdmin');
+        if (raw) {
+            const v = JSON.parse(raw);
+            if (Array.isArray(v) && v.length > 0) return;
+        }
+    } catch (e) { /* continuar */ }
+    const paraAdmin = listaAdmin.map(v => ({
+        id: v.id,
+        origen: v.origen,
+        destino: v.destino,
+        salida: v.salida,
+        fecha: v.fecha,
+        estado: v.estado,
+        capacidad: v.capacidad || 128
+    }));
+    localStorage.setItem('vuelosAdmin', JSON.stringify(paraAdmin));
+    const sync = listaAdmin.map(v => ({
+        id: v.id,
+        nro: v.id,
+        origen: v.origen,
+        destino: v.destino,
+        salida: v.salida,
+        fecha: v.fecha,
+        estado: v.estado
+    }));
+    localStorage.setItem('itinerarioSync', JSON.stringify(sync));
+}
+
+function obtenerVuelosItinerario() {
+    const adminRaw = localStorage.getItem('vuelosAdmin');
+    const syncRaw = localStorage.getItem('itinerarioSync');
+    let vuelos;
+    if (adminRaw) {
+        try {
+            const va = JSON.parse(adminRaw);
+            if (Array.isArray(va) && va.length > 0 && va[0].origen) {
+                vuelos = va.map(v => ({
+                    id: v.id,
+                    nro: v.id || v.nro,
+                    origen: v.origen,
+                    destino: v.destino,
+                    salida: v.salida,
+                    fecha: v.fecha,
+                    estado: v.estado
+                }));
+            }
+        } catch (e) { /* ignore */ }
+    }
+    if (!vuelos && syncRaw) {
+        try {
+            const sv = JSON.parse(syncRaw);
+            if (Array.isArray(sv) && sv.length > 0 && sv[0].origen) vuelos = sv;
+        } catch (e) { /* ignore */ }
+    }
+    if (!vuelos || !vuelos.length) {
+        const gen = generarVuelosMesInicial();
+        persistirVuelosInicialesSiVacios(gen);
+        vuelos = gen.map(v => ({
+            id: v.id,
+            nro: v.id,
+            origen: v.origen,
+            destino: v.destino,
+            salida: v.salida,
+            fecha: v.fecha,
+            estado: v.estado
+        }));
+    }
+    return vuelos;
+}
+
+function estadoVueloPermiteReserva(estado) {
+    if (!estado) return true;
+    return estado !== 'Cancelado' && estado !== 'Aterrizado';
+}
+
+/** Si hay fecha de ida, debe coincidir con la fecha del vuelo en itinerario */
+function encontrarVueloItinerario(origenInput, destinoSelect, fechaIda) {
+    const vuelos = obtenerVuelosItinerario();
+    const oNorm = normalizarCiudadItinerario(origenInput);
+    const dNorm = normalizarCiudadItinerario(destinoSelect);
+    const candidatos = vuelos.filter(v =>
+        estadoVueloPermiteReserva(v.estado) &&
+        normalizarCiudadItinerario(v.origen) === oNorm &&
+        normalizarCiudadItinerario(v.destino) === dNorm
+    );
+    if (!candidatos.length) return null;
+    if (fechaIda) {
+        const porFecha = candidatos.find(v => v.fecha === fechaIda);
+        return porFecha || null;
+    }
+    return candidatos[0];
+}
+
+function datosCabinaPorAsiento(codigoAsiento) {
+    const m = String(codigoAsiento || '').match(/^(\d+)/);
+    const fila = m ? parseInt(m[1], 10) : 0;
+    if (configAvion.filasClub.includes(fila)) {
+        return { nombre: 'Club Económico', claseCabina: 'club' };
+    }
+    return { nombre: 'Clase Turista', claseCabina: 'turista' };
+}
+
+function fmtUsd(n) {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+}
 
 // --- SHOWCASE DE DESTINOS ---
 let dstActivo = 0;
@@ -359,11 +677,29 @@ function mostrarSeccion(idSeccion) {
     } else if (idSeccion === 'faq') {
         document.getElementById('seccion-faq').classList.remove('hidden');
     } else if (idSeccion === 'admin') {
-        const secAdmin = document.getElementById('seccion-admin');
-        if (secAdmin) {
-            secAdmin.classList.remove('hidden');
-            if (typeof inicializarAdmin === 'function') inicializarAdmin();
+        if (typeof adminEstaAutenticado === 'function' && adminEstaAutenticado()) {
+            revelarPanelAdministracion();
+        } else if (typeof abrirLoginAdmin === 'function') {
+            abrirLoginAdmin();
+        } else {
+            revelarPanelAdministracion();
         }
+    }
+}
+
+/** Muestra la sección de administración (tras login o si no hay módulo de auth). */
+function revelarPanelAdministracion() {
+    const heroVisual = document.getElementById('contenedor-reserva-visual');
+    if (heroVisual) heroVisual.classList.add('hidden');
+    ['paso1', 'paso3', 'paso-restricciones', 'paso4', 'seccion-itinerario', 'seccion-faq', 'seccion-destinos'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+    const secAdmin = document.getElementById('seccion-admin');
+    if (secAdmin) {
+        secAdmin.classList.remove('hidden');
+        if (typeof inicializarAdmin === 'function') inicializarAdmin();
+        secAdmin.scrollIntoView({ behavior: 'smooth' });
     }
 }
 
@@ -460,30 +796,40 @@ function procesarBusqueda() {
     if ((ninos > 0 || infantes > 0) && adultos === 0) { alert("Los menores requieren un adulto acompañante."); return; }
     if (total === 0) { alert("Seleccione al menos un pasajero."); return; }
 
-    // Verificar disponibilidad contra vuelos del itinerario admin
-    const syncRaw = localStorage.getItem('itinerarioSync');
-    if (syncRaw) {
-        try {
-            const vuelosAdmin = JSON.parse(syncRaw);
-            // Normalizar para comparar: extraer solo el nombre de ciudad sin código
-            const normalizar = str => str.replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
-            const origenNorm = normalizar(origenInput);
-            const destinoNorm = normalizar(destinoSelect);
-            const disponible = vuelosAdmin.some(v => {
-                const vOrigenNorm = normalizar(v.origen || '');
-                const vDestinoNorm = normalizar(v.destino || '');
-                const estadoOk = !v.estado || (v.estado !== 'Cancelado' && v.estado !== 'Aterrizado');
-                return vOrigenNorm === origenNorm && vDestinoNorm === destinoNorm && estadoOk;
-            });
-            if (!disponible) {
-                alert("✈️ Vuelo no disponible. No existe un vuelo activo para la ruta seleccionada. Consulte el itinerario para ver los vuelos disponibles.");
-                return;
-            }
-        } catch(e) {}
+    const fechaIda = (document.getElementById('fecha-ida')?.value || '').trim();
+    const fechaVuelta = (document.getElementById('fecha-vuelta')?.value || '').trim();
+    const esIdaYVuelta = document.getElementById('tipo-viaje').checked;
+
+    if (!fechaIda) {
+        alert("Seleccione la fecha de ida. La disponibilidad se verifica contra los vuelos registrados en el itinerario para esa fecha.");
+        return;
+    }
+
+    const vueloItin = encontrarVueloItinerario(origenInput, destinoSelect, fechaIda);
+    if (!vueloItin) {
+        if (fechaIda) {
+            alert("✈️ El vuelo no está disponible: no hay una salida en el itinerario para esa ruta en la fecha de ida elegida. Revise el itinerario o cambie la fecha.");
+        } else {
+            alert("✈️ El vuelo no está disponible: esa ruta no figura en el itinerario con estado operativo, o no hay coincidencia. Consulte Itinerario para rutas y fechas registradas.");
+        }
+        return;
+    }
+    if (esIdaYVuelta && !fechaVuelta) {
+        alert("Seleccione la fecha de vuelta para viaje ida y vuelta.");
+        return;
     }
 
     reserva.origen = origenInput;
     reserva.destino = destinoSelect;
+    reserva.fechaIda = fechaIda;
+    reserva.fechaVuelta = esIdaYVuelta ? fechaVuelta : '';
+    reserva.vueloItinerario = {
+        nro: vueloItin.nro || vueloItin.id,
+        salida: vueloItin.salida,
+        fecha: vueloItin.fecha,
+        estado: vueloItin.estado
+    };
+    reserva.metodoPago = '';
     reserva.cantidadBoletos = total;
     reserva.conteoCategorias = { adultos, ninos, infantes, mayores };
     reserva.restricciones = [];
@@ -505,7 +851,7 @@ function generarFormulariosPasajeros() {
                 <h4>Pasajero ${i}</h4>
                 <input type="text" placeholder="Nombre Completo" id="p-nombre-${i}" required>
                 <input type="text" placeholder="Cédula/ID" id="p-cedula-${i}" required>
-                <input type="number" id="p-edad-${i}" min="0" placeholder="Edad" required>
+                <input type="number" id="p-edad-${i}" min="0" max="99" step="1" inputmode="numeric" placeholder="Edad (0–99)" required title="Edad entre 0 y 99 años">
                 <div class="preguntas-rutinarias">
                     <label><input type="checkbox" id="p-silla-${i}"> Requiere asistencia especial</label>
                 </div>
@@ -518,8 +864,9 @@ function confirmarPasajeros() {
     for (let i = 1; i <= reserva.cantidadBoletos; i++) {
         const nombre = document.getElementById(`p-nombre-${i}`).value;
         const cedula = document.getElementById(`p-cedula-${i}`).value;
-        const edad = parseInt(document.getElementById(`p-edad-${i}`).value);
+        const edad = parseInt(document.getElementById(`p-edad-${i}`).value, 10);
         if (!nombre || !cedula || isNaN(edad)) { alert("Complete todos los campos."); return; }
+        if (edad < 0 || edad > 99) { alert(`Pasajero ${i}: la edad debe estar entre 0 y 99 años.`); return; }
         reserva.pasajeros.push({ nombre, cedula, edad, asistencia: document.getElementById(`p-silla-${i}`).checked });
     }
     generarFormulariosRestricciones();
@@ -538,7 +885,7 @@ function generarFormulariosRestricciones() {
             <h3>Pasajero ${i} — ${p.nombre}</h3>
 
             <h4>DATOS BÁSICOS</h4>
-            <label>1. Edad del pasajero: <input type="number" id="r-edad-${i}" min="0" value="${p.edad || ''}" readonly style="width:60px;background:#f0f0f0;"></label>
+            <label>1. Edad del pasajero: <input type="number" id="r-edad-${i}" min="0" max="99" step="1" value="${p.edad != null ? p.edad : ''}" readonly style="width:60px;background:#f0f0f0;"></label>
 
             <div class="pregunta">2. ¿Viaja acompañado por un adulto responsable?</div>
             <div class="radio-group">
@@ -637,7 +984,8 @@ function confirmarRestricciones() {
         });
     }
 
-    const asientosOcupados = JSON.parse(localStorage.getItem('asientosOcupados')) || [...configAvion.asientosBloqueados];
+    const idVuelo = normalizarIdVuelo(reserva.vueloItinerario?.nro);
+    const asientosOcupados = obtenerAsientosOcupadosParaVuelo(idVuelo);
     const asientosRestringidos = obtenerAsientosBloqueadosPorRestricciones();
     const totalAsientos = 128;
     const disponibles = totalAsientos - new Set([...asientosOcupados, ...asientosRestringidos]).size;
@@ -690,9 +1038,18 @@ function obtenerAsientosBloqueadosPorRestricciones() {
 function renderizarMapaAsientos() {
     const contenedor = document.getElementById('mapa-avion-container');
     contenedor.innerHTML = "";
-    asientosOcupadosGlobal = JSON.parse(localStorage.getItem('asientosOcupados')) || [...configAvion.asientosBloqueados];
+    const idVuelo = normalizarIdVuelo(reserva.vueloItinerario?.nro);
+    const infoVuelo = document.createElement('p');
+    infoVuelo.className = 'mapa-vuelo-info';
+    infoVuelo.style.cssText = 'text-align:center;margin-bottom:14px;font-size:15px;color:#0d2d6e;font-weight:600;';
+    infoVuelo.textContent = idVuelo
+        ? `Vuelo ${idVuelo} — Cada vuelo tiene su propio mapa de asientos.`
+        : 'Selección de asientos';
+    contenedor.appendChild(infoVuelo);
+
+    const asientosOcupadosGlobal = obtenerAsientosOcupadosParaVuelo(idVuelo);
     const asientosRestringidos = obtenerAsientosBloqueadosPorRestricciones();
-    const todosOcupados = [...asientosOcupadosGlobal, ...asientosRestringidos];
+    const todosOcupados = [...new Set([...asientosOcupadosGlobal, ...asientosRestringidos])];
 
     const hayPasajerosRestringidosEmergencia = reserva.restricciones && reserva.restricciones.some(r =>
         r.asistencia !== 'ninguna' || r.intelectual === 'si' || r.oxigeno !== 'no' || r.camilla === 'si' || r.otraCondicion === 'si'
@@ -735,7 +1092,7 @@ function renderizarMapaAsientos() {
         if (esClub && !seccionClubAbierta) {
             const sep = document.createElement('div');
             sep.className = 'seccion-label club';
-            sep.innerHTML = '⭐ Clase Club — Filas 1–2';
+            sep.innerHTML = '⭐ Club Económico — Filas 1–2';
             contenedor.appendChild(sep);
             seccionClubAbierta = true;
         }
@@ -846,6 +1203,24 @@ function renderizarMapaAsientos() {
         contenedor.appendChild(info);
     }
 
+    const pagoWrap = document.createElement('div');
+    pagoWrap.className = 'pago-metodo-wrap';
+    pagoWrap.style.cssText = 'margin-top:24px;padding:18px;border:1px solid #b8d4f5;border-radius:12px;background:linear-gradient(180deg,#f0f7ff 0%,#fff 100%);max-width:440px;margin-left:auto;margin-right:auto;box-shadow:0 2px 8px rgba(0,82,204,0.08);';
+    pagoWrap.innerHTML = `
+        <h4 style="margin:0 0 6px;color:#0d2d6e;font-size:1.05rem;">Método de pago</h4>
+        <p style="font-size:13px;color:#444;margin:0 0 14px;line-height:1.4;">El total del boleto (según cabina y tramos) podrá pagarse con una de estas opciones:</p>
+        <div class="pago-opciones" style="display:flex;flex-direction:column;gap:10px;">
+            ${METODOS_PAGO.map((m, idx) => `
+                <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;">
+                    <input type="radio" name="metodo-pago-reserva" value="${m.id}" ${idx === 0 ? 'checked' : ''} style="margin-top:3px;">
+                    <span style="font-size:14px;"><strong style="color:#0052cc;">${m.etiqueta}</strong><br><span style="color:#64748b;font-size:12px;">${m.detalle}</span></span>
+                </label>
+            `).join('')}
+        </div>
+        <p style="font-size:12px;color:#64748b;margin:12px 0 0;">En su ruta: <strong>Club Económico</strong> (más económico) ${fmtUsd(totalUsdViajePorPersona(reserva.origen, reserva.destino, reserva.tipoViaje, 'club'))} · <strong>Clase Turista</strong> ${fmtUsd(totalUsdViajePorPersona(reserva.origen, reserva.destino, reserva.tipoViaje, 'turista'))} <span style="display:block;margin-top:4px;">Total aprox. por persona según cabina (${reserva.tipoViaje === 'Ida y vuelta' ? 'ida y vuelta' : 'solo ida'}).</span></p>
+    `;
+    contenedor.appendChild(pagoWrap);
+
     // --- Botón Finalizar ---
     const btnFinalizar = document.createElement('button');
     btnFinalizar.className = 'btn-primario';
@@ -882,11 +1257,37 @@ function finalizarReserva() {
         alert("Debe seleccionar todos los asientos."); return;
     }
 
-    // 1. Guardar en historial y actualizar puestos ocupados (JSON persistente)
-    asientosOcupadosGlobal.push(...reserva.asientos);
-    localStorage.setItem('asientosOcupados', JSON.stringify(asientosOcupadosGlobal));
+    const selPago = document.querySelector('input[name="metodo-pago-reserva"]:checked');
+    if (!selPago) { alert("Seleccione un método de pago (Zelle, Pago Móvil o Binance)."); return; }
+    reserva.metodoPago = selPago.value;
+    const metodoEtiqueta = METODOS_PAGO.find(m => m.id === reserva.metodoPago)?.etiqueta || reserva.metodoPago;
 
-    // 1b. Guardar reserva completa para el panel de administración
+    const tramos = reserva.tipoViaje === 'Ida y vuelta' ? 2 : 1;
+    let totalUsd = 0;
+    const detallePasajeros = reserva.pasajeros.map((p, i) => {
+        const asiento = reserva.asientos[i] || '-';
+        const cab = datosCabinaPorAsiento(asiento);
+        const subtotal = totalUsdViajePorPersona(reserva.origen, reserva.destino, reserva.tipoViaje, cab.claseCabina);
+        totalUsd += subtotal;
+        return { nombre: p.nombre, cedula: p.cedula, edad: p.edad, asiento, clase: cab.nombre, subtotalUsd: subtotal };
+    });
+
+    const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const fmtFechaTicket = f => {
+        if (!f) return '—';
+        if (f.includes('/')) return esc(f);
+        const p = f.split('-');
+        return p.length === 3 ? esc(`${p[2]}/${p[1]}/${p[0]}`) : esc(f);
+    };
+    const vInfo = reserva.vueloItinerario || {};
+    const horaFmt = formatearHora12Admin(vInfo.salida || '');
+    const idV = normalizarIdVuelo(vInfo.nro);
+    if (!idV) {
+        alert('Error interno: no se identificó el vuelo. Vuelva a buscar su vuelo.');
+        return;
+    }
+    agregarAsientosOcupadosVuelo(idV, reserva.asientos);
+
     const reservasGuardadas = JSON.parse(localStorage.getItem('reservasAdmin')) || [];
     const nuevaReserva = {
         id: 'RES-' + Date.now(),
@@ -894,91 +1295,138 @@ function finalizarReserva() {
         origen: reserva.origen,
         destino: reserva.destino,
         tipoViaje: reserva.tipoViaje,
-        pasajeros: reserva.pasajeros.map((p, i) => ({
-            nombre: p.nombre,
-            cedula: p.cedula,
-            edad: p.edad,
-            asiento: reserva.asientos[i] || '-'
+        fechaIda: reserva.fechaIda,
+        fechaVuelta: reserva.fechaVuelta,
+        vueloNro: idV,
+        metodoPago: reserva.metodoPago,
+        totalUsd,
+        pasajeros: detallePasajeros.map(d => ({
+            nombre: d.nombre,
+            cedula: d.cedula,
+            edad: d.edad,
+            asiento: d.asiento,
+            clase: d.clase,
+            subtotalUsd: d.subtotalUsd
         })),
         asientos: [...reserva.asientos]
     };
     reservasGuardadas.push(nuevaReserva);
     localStorage.setItem('reservasAdmin', JSON.stringify(reservasGuardadas));
 
-    // 2. Generar ventana de impresión
+    const filasTabla = detallePasajeros.map(d => `
+        <tr>
+            <td>${esc(d.nombre)}</td>
+            <td>${esc(d.cedula)}</td>
+            <td>${esc(d.asiento)}</td>
+            <td>${esc(d.clase)}</td>
+            <td style="text-align:right;font-weight:600;">${fmtUsd(d.subtotalUsd)}</td>
+        </tr>
+    `).join('');
+
     const ventanaPrint = window.open('', '_blank');
     ventanaPrint.document.write(`
         <html>
         <head>
-            <title>Ticket de Reserva - Canaima Airlines</title>
+            <meta charset="UTF-8">
+            <title>Boleto — Canaima Airlines</title>
             <style>
-                body { font-family: sans-serif; padding: 40px; }
-                .ticket { border: 2px solid #444; padding: 20px; border-radius: 10px; max-width: 500px; margin: auto; }
-                h1 { color: #0052cc; text-align: center; border-bottom: 2px solid #eee; }
-                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 24px; background: #e8eef5; margin: 0; }
+                .ticket-wrap { max-width: 560px; margin: auto; }
+                .ticket {
+                    border: 1px solid #1e3a5f;
+                    border-radius: 14px;
+                    overflow: hidden;
+                    background: #fff;
+                    box-shadow: 0 12px 40px rgba(13,45,110,0.15);
+                }
+                .ticket-header {
+                    background: linear-gradient(135deg, #0d2d6e 0%, #0052cc 50%, #1e6fd9 100%);
+                    color: #fff;
+                    padding: 20px 22px;
+                    text-align: center;
+                }
+                .ticket-header h1 { margin: 0; font-size: 1.35rem; letter-spacing: 0.08em; }
+                .ticket-header .sub { margin: 8px 0 0; font-size: 12px; opacity: 0.92; }
+                .ticket-body { padding: 20px 22px; }
+                .ruta-big { font-size: 1.1rem; font-weight: 700; color: #0d2d6e; text-align: center; margin-bottom: 6px; }
+                .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px; margin: 16px 0; }
+                .meta-box { background: #f1f6fd; border-radius: 8px; padding: 10px 12px; border: 1px solid #dbeafe; }
+                .meta-box b { display: block; color: #64748b; font-size: 11px; text-transform: uppercase; margin-bottom: 4px; }
+                table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+                th, td { border: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; }
+                th { background: #f8fafc; color: #334155; font-size: 11px; text-transform: uppercase; }
+                .total-bar {
+                    margin-top: 14px; padding: 14px 16px;
+                    background: linear-gradient(90deg, #0d2d6e, #0052cc);
+                    color: #fff; border-radius: 10px;
+                    display: flex; justify-content: space-between; align-items: center;
+                }
+                .pago-box { margin-top: 14px; padding: 12px 14px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; font-size: 14px; }
+                .footer-note { text-align: center; font-size: 12px; color: #64748b; margin-top: 16px; }
             </style>
         </head>
         <body>
-            <div class="ticket">
-                <h1>CANAIMA AIRLINES</h1>
-                <p><b>Ruta:</b> ${reserva.origen} ✈️ ${reserva.destino}</p>
-                <p><b>Tipo:</b> ${reserva.tipoViaje}</p>
-                <table>
-                    <thead><tr><th>Pasajero</th><th>ID</th><th>Asiento</th></tr></thead>
-                    <tbody>
-                        ${reserva.pasajeros.map((p, i) => `
-                            <tr><td>${p.nombre}</td><td>${p.cedula}</td><td>${reserva.asientos[i]}</td></tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-                <p style="text-align:center">¡Gracias por preferirnos!</p>
+            <div class="ticket-wrap">
+                <div class="ticket">
+                    <div class="ticket-header">
+                        <h1>CANAIMA AIRLINES</h1>
+                        <div class="sub">Comprobante de reserva / boleto electrónico</div>
+                    </div>
+                    <div class="ticket-body">
+                        <div class="ruta-big">${esc(reserva.origen)} → ${esc(reserva.destino)}</div>
+                        <div class="meta-grid">
+                            <div class="meta-box"><b>Vuelo</b>${esc(vInfo.nro || '—')}</div>
+                            <div class="meta-box"><b>Tipo de viaje</b>${esc(reserva.tipoViaje)}</div>
+                            <div class="meta-box"><b>Fecha salida (itinerario)</b>${fmtFechaTicket(vInfo.fecha)}</div>
+                            <div class="meta-box"><b>Hora salida</b>${esc(horaFmt)}</div>
+                            <div class="meta-box"><b>Fecha ida elegida</b>${fmtFechaTicket(reserva.fechaIda)}</div>
+                            <div class="meta-box"><b>Fecha vuelta</b>${reserva.tipoViaje === 'Ida y vuelta' ? fmtFechaTicket(reserva.fechaVuelta) : '—'}</div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Pasajero</th>
+                                    <th>ID</th>
+                                    <th>Asiento</th>
+                                    <th>Cabina</th>
+                                    <th>Tarifa total (${esc(reserva.tipoViaje)})</th>
+                                </tr>
+                            </thead>
+                            <tbody>${filasTabla}</tbody>
+                        </table>
+                        <div class="total-bar">
+                            <span>Total a pagar (${tramos} tramo${tramos > 1 ? 's' : ''} · todos los pasajeros)</span>
+                            <span style="font-size:1.25rem;font-weight:800;">${fmtUsd(totalUsd)}</span>
+                        </div>
+                        <div class="pago-box">
+                            <strong>Método de pago seleccionado:</strong> ${esc(metodoEtiqueta)}<br>
+                            <span style="font-size:12px;color:#92400e;">Presente este comprobante o confirme el pago según las instrucciones que recibirá por el canal elegido.</span>
+                        </div>
+                        <p class="footer-note">Gracias por volar con Canaima Airlines · Código de reserva: ${esc(nuevaReserva.id)}</p>
+                    </div>
+                </div>
             </div>
-            <script>window.print();</script>
+            <script>window.print();<\/script>
         </body>
         </html>
     `);
     ventanaPrint.document.close();
 
     alert("Reserva finalizada. Los asientos han sido actualizados.");
-    location.reload(); 
+    location.reload();
 }
 
 function renderizarItinerario() {
     const contenedor = document.getElementById('tabla-vuelos');
-
-    // Prioridad: vuelosAdmin (fuente de verdad) → itinerarioSync → defaults
-    let vuelos;
-    const adminRaw = localStorage.getItem('vuelosAdmin');
-    const syncRaw  = localStorage.getItem('itinerarioSync');
-
-    if (adminRaw) {
-        try {
-            const va = JSON.parse(adminRaw);
-            // Validar que tenga la estructura correcta (origen existe)
-            if (va.length && va[0].origen) {
-                vuelos = va.map(v => ({
-                    nro: v.id, origen: v.origen, destino: v.destino,
-                    salida: v.salida, fecha: v.fecha, estado: v.estado
-                }));
-            }
-        } catch(e) {}
-    }
-    if (!vuelos && syncRaw) {
-        try {
-            const sv = JSON.parse(syncRaw);
-            if (sv.length && sv[0].origen) vuelos = sv;
-        } catch(e) {}
-    }
-    if (!vuelos) {
-        const hoy = new Date().toISOString().split('T')[0];
-        vuelos = [
-            { nro: 'AV102', origen: 'Caracas (CCS)', destino: 'Madrid (MAD)',      salida: '08:00', fecha: hoy, estado: 'A tiempo'   },
-            { nro: 'AV205', origen: 'Caracas (CCS)', destino: 'Maracaibo (MAR)',   salida: '11:30', fecha: hoy, estado: 'Embarcando' },
-            { nro: 'AV309', origen: 'Caracas (CCS)', destino: 'Buenos Aires (EZE)',salida: '15:00', fecha: hoy, estado: 'A tiempo'   },
-            { nro: 'AV412', origen: 'Caracas (CCS)', destino: 'Bogotá (BOG)',      salida: '18:45', fecha: hoy, estado: 'Retrasado'  },
-        ];
-    }
+    const raw = obtenerVuelosItinerario();
+    const vuelos = raw.map(v => ({
+        nro: v.nro || v.id,
+        origen: v.origen,
+        destino: v.destino,
+        salida: v.salida,
+        fecha: v.fecha,
+        estado: v.estado
+    }));
 
     const coloresEstado = {
         'A tiempo':   { color: '#166534', bg: '#dcfce7' },
@@ -1096,25 +1544,33 @@ function verificarRuta() {
     const rol = urlParams.get('role');
 
     if (rol === 'admin') {
-        // Ocultar todo y mostrar admin
         const heroVisual = document.getElementById('contenedor-reserva-visual');
         if (heroVisual) heroVisual.classList.add('hidden');
         document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
-        
-        document.getElementById('seccion-admin').classList.remove('hidden');
-        actualizarPanelAdmin();
+
+        if (typeof adminEstaAutenticado === 'function' && adminEstaAutenticado()) {
+            revelarPanelAdministracion();
+        } else if (typeof abrirLoginAdmin === 'function') {
+            abrirLoginAdmin();
+        } else {
+            revelarPanelAdministracion();
+        }
     }
 }
 
 function actualizarPanelAdmin() {
-    const ocupados = JSON.parse(localStorage.getItem('asientosOcupados')) || [];
-    document.getElementById('admin-asientos-total').innerText = ocupados.length;
-    document.getElementById('admin-total-vuelos').innerText = baseDeDatosVuelos.length;
+    const total = typeof contarTotalAsientosReservados === 'function' ? contarTotalAsientosReservados() : 0;
+    const elAs = document.getElementById('admin-asientos-total');
+    const elV = document.getElementById('admin-total-vuelos');
+    if (elAs) elAs.innerText = total;
+    if (elV) elV.innerText = baseDeDatosVuelos.length;
 }
 
 function resetearSistema() {
     if(confirm("¿Estás seguro de borrar todas las reservas actuales?")) {
+        localStorage.removeItem(STORAGE_ASIENTOS_POR_VUELO);
         localStorage.removeItem('asientosOcupados');
+        localStorage.removeItem('reservasAdmin');
         alert("Sistema reseteado.");
         window.location.href = window.location.pathname; // Redirigir al inicio
     }
@@ -1252,10 +1708,7 @@ function procesarWebCheckin(accion) {
             return;
         }
         if (!confirm('¿Estás seguro de cancelar la reserva? Los asientos serán liberados y esta acción no se puede deshacer.')) return;
-        // Liberar asientos
-        const asientosOcupados = JSON.parse(localStorage.getItem('asientosOcupados')) || [];
-        const asientosActualizados = asientosOcupados.filter(a => !reserva.asientos.includes(a));
-        localStorage.setItem('asientosOcupados', JSON.stringify(asientosActualizados));
+        liberarAsientosReserva(reserva);
 
         reserva.checkin = 'cancelado';
         reserva.cancelacionFecha = new Date().toISOString();

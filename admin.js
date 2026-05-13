@@ -2,7 +2,7 @@
  * PANEL DE ADMINISTRACIÓN — CANAIMA AIRLINES
  * admin.js
  *
- * Acceso: index.html?role=admin
+ * Acceso: menú Admin o index.html?role=admin (requiere login)
  *
  * Módulos:
  *   1. Estado global y persistencia
@@ -36,16 +36,98 @@ const DESTINOS_DISPONIBLES = [
 ];
 
 // ─────────────────────────────────────────────
+// LOGIN ADMIN (modal al pulsar Admin o ?role=admin)
+// ─────────────────────────────────────────────
+
+const ADMIN_LOGIN_EMAIL = 'admin@airport.com';
+const ADMIN_LOGIN_PASSWORD = 'admin1234';
+const SESSION_KEY_ADMIN = 'canaimaAdminSesion';
+
+function adminEstaAutenticado() {
+    return sessionStorage.getItem(SESSION_KEY_ADMIN) === '1';
+}
+
+function cerrarModalLoginAdmin() {
+    const m = document.getElementById('modal-login-admin');
+    if (m) m.classList.add('hidden');
+    const err = document.getElementById('admin-login-error');
+    if (err) {
+        err.textContent = '';
+        err.classList.add('hidden');
+    }
+}
+
+function cancelarLoginAdmin() {
+    cerrarModalLoginAdmin();
+    if (typeof mostrarPaso === 'function') mostrarPaso(1);
+}
+
+function cancelarLoginAdminSiOverlay(event) {
+    if (event.target === document.getElementById('modal-login-admin')) {
+        cancelarLoginAdmin();
+    }
+}
+
+function abrirLoginAdmin() {
+    const m = document.getElementById('modal-login-admin');
+    if (!m) return;
+    const mail = document.getElementById('admin-login-email');
+    const pass = document.getElementById('admin-login-password');
+    if (mail) mail.value = '';
+    if (pass) pass.value = '';
+    const err = document.getElementById('admin-login-error');
+    if (err) {
+        err.textContent = '';
+        err.classList.add('hidden');
+    }
+    m.classList.remove('hidden');
+    setTimeout(() => mail?.focus(), 100);
+}
+
+function intentarLoginAdmin() {
+    const email = (document.getElementById('admin-login-email')?.value || '').trim().toLowerCase();
+    const pass = document.getElementById('admin-login-password')?.value || '';
+    const err = document.getElementById('admin-login-error');
+    if (email !== ADMIN_LOGIN_EMAIL || pass !== ADMIN_LOGIN_PASSWORD) {
+        if (err) {
+            err.textContent = 'Correo o contraseña incorrectos.';
+            err.classList.remove('hidden');
+        }
+        return;
+    }
+    sessionStorage.setItem(SESSION_KEY_ADMIN, '1');
+    cerrarModalLoginAdmin();
+    if (typeof revelarPanelAdministracion === 'function') {
+        revelarPanelAdministracion();
+    }
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const m = document.getElementById('modal-login-admin');
+    if (m && !m.classList.contains('hidden')) cancelarLoginAdmin();
+});
+
+// ─────────────────────────────────────────────
 // PERSISTENCIA
 // ─────────────────────────────────────────────
 
 function cargarVuelos() {
-    return JSON.parse(localStorage.getItem('vuelosAdmin')) || [
+    const raw = localStorage.getItem('vuelosAdmin');
+    if (raw) {
+        try {
+            const v = JSON.parse(raw);
+            if (Array.isArray(v) && v.length > 0) return v;
+        } catch (e) { /* ignore */ }
+    }
+    const inicial = typeof generarVuelosMesInicial === 'function' ? generarVuelosMesInicial() : [
         { id: 'AV102', origen: 'Caracas (CCS)', destino: 'Madrid (MAD)', salida: '08:00', fecha: hoyISO(), estado: 'A tiempo', capacidad: 128 },
         { id: 'AV205', origen: 'Caracas (CCS)', destino: 'Maracaibo (MAR)', salida: '11:30', fecha: hoyISO(), estado: 'Embarcando', capacidad: 128 },
         { id: 'AV309', origen: 'Caracas (CCS)', destino: 'Buenos Aires (EZE)', salida: '15:00', fecha: hoyISO(), estado: 'A tiempo', capacidad: 128 },
         { id: 'AV412', origen: 'Caracas (CCS)', destino: 'Bogotá (BOG)', salida: '18:45', fecha: hoyISO(), estado: 'Retrasado', capacidad: 128 },
     ];
+    guardarVuelos(inicial);
+    return inicial;
 }
 
 function guardarVuelos(vuelos) {
@@ -68,7 +150,8 @@ function cargarReservas() {
 }
 
 function cargarAsientosOcupados() {
-    return JSON.parse(localStorage.getItem('asientosOcupados')) || [];
+    if (typeof contarTotalAsientosReservados === 'function') return contarTotalAsientosReservados();
+    return 0;
 }
 
 // ─────────────────────────────────────────────
@@ -630,10 +713,8 @@ function cancelarReservaAdmin(id) {
     if (idx === -1) { mostrarToast('Reserva no encontrada'); return; }
     const reserva = reservas[idx];
 
-    // Liberar asientos
-    const asientosOcupados = JSON.parse(localStorage.getItem('asientosOcupados')) || [];
-    const asientosActualizados = asientosOcupados.filter(a => !(reserva.asientos || []).includes(a));
-    localStorage.setItem('asientosOcupados', JSON.stringify(asientosActualizados));
+    // Liberar asientos del vuelo correspondiente
+    if (typeof liberarAsientosReserva === 'function') liberarAsientosReserva(reserva);
 
     reserva.checkin = 'cancelado';
     reserva.cancelacionFecha = new Date().toISOString();
@@ -650,10 +731,11 @@ function cancelarReservaAdmin(id) {
 function renderTabStats() {
     const vuelos   = cargarVuelos();
     const reservas = cargarReservas();
-    const ocupados = cargarAsientosOcupados();
+    const totalAsientosReservados = cargarAsientosOcupados();
+    const capacidadTotal = vuelos.length * 128;
 
     const totalPasajeros = reservas.reduce((s, r) => s + (r.pasajeros?.length || 0), 0);
-    const porcOcupacion  = Math.round((ocupados.length / 128) * 100);
+    const porcOcupacion  = capacidadTotal > 0 ? Math.min(100, Math.round((totalAsientosReservados / capacidadTotal) * 100)) : 0;
 
     // Conteo de check-ins
     const checkinConfirmados = reservas.filter(r => r.checkin === 'confirmado').length;
@@ -694,8 +776,8 @@ function renderTabStats() {
             </div>
             <div class="adm-stat-card" style="border-top:3px solid #f97316">
                 <div class="adm-stat-icon">💺</div>
-                <div class="adm-stat-val">${ocupados.length}</div>
-                <div class="adm-stat-lbl">Asientos ocupados</div>
+                <div class="adm-stat-val">${totalAsientosReservados}</div>
+                <div class="adm-stat-lbl">Asientos reservados (todos los vuelos)</div>
             </div>
             <div class="adm-stat-card" style="border-top:3px solid #8b5cf6">
                 <div class="adm-stat-icon">📋</div>
@@ -744,7 +826,7 @@ function renderTabStats() {
 
             <!-- Ocupación general -->
             <div class="adm-stats-panel">
-                <h3 class="adm-stats-panel-titulo">Ocupación de la aeronave</h3>
+                <h3 class="adm-stats-panel-titulo">Ocupación global (flota)</h3>
                 <div class="adm-donut-wrap">
                     <svg viewBox="0 0 120 120" class="adm-donut">
                         <circle cx="60" cy="60" r="50" fill="none" stroke="#e2e8f0" stroke-width="14"/>
@@ -755,7 +837,7 @@ function renderTabStats() {
                         <text x="60" y="73" text-anchor="middle" font-size="9" fill="#8fa8d4">ocupados</text>
                     </svg>
                 </div>
-                <p class="adm-donut-sub">${ocupados.length} de 128 asientos ocupados</p>
+                <p class="adm-donut-sub">${totalAsientosReservados} asientos vendidos · ${capacidadTotal} plazas totales (${vuelos.length} vuelos × 128)</p>
             </div>
 
             <!-- Top destinos -->
@@ -813,7 +895,7 @@ function mostrarToast(msg) {
 
 function confirmarReset() {
     if (!confirm('¿Eliminar TODOS los datos del sistema? (vuelos, reservas, asientos)\nEsta acción es irreversible.')) return;
-    ['asientosOcupados', 'reservasAdmin', 'vuelosAdmin', 'itinerarioSync'].forEach(k => localStorage.removeItem(k));
+    ['asientosPorVuelo', 'asientosOcupados', 'reservasAdmin', 'vuelosAdmin', 'itinerarioSync'].forEach(k => localStorage.removeItem(k));
     mostrarToast('Sistema reseteado ✓');
     activarPestana('vuelos');
 }
@@ -1116,5 +1198,4 @@ window.addEventListener('load', () => {
             datos.forEach(v => baseDeDatosVuelos.push(v));
         } catch(e) {}
     }
-    inicializarAdmin();
 });
