@@ -44,6 +44,10 @@ const horariosRutas = {
     "Los Roques (LRV)": [0, 1, 2, 3, 4, 5, 6],
     "Maracaibo (MAR)": [1, 2, 3, 4, 5, 6],
     "Maturín (MUN)": [1, 3, 5],
+<<<<<<< HEAD
+=======
+    "Valencia (VLN)": [1, 2, 3, 4, 5, 6],
+>>>>>>> upstream/develop
     "Caracas (CCS)": [0, 1, 2, 3, 4, 5, 6],
     "Bridgetown (BGI)": [2, 5],
     "Cancún (CUN)": [1, 3, 6],
@@ -93,6 +97,12 @@ const infoDestinos = [
     { nombre: "Maturín", codigo: "MUN", pais: "Venezuela", tipo: "nacional",
       descripcion: "Capital del estado Monagas, centro neurálgico del oriente venezolano con gran actividad petrolera.",
       imagen: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&h=250&fit=crop" },
+<<<<<<< HEAD
+=======
+    { nombre: "Valencia", codigo: "VLN", pais: "Venezuela", tipo: "nacional",
+      descripcion: "Capital del estado Carabobo, ciudad industrial y cultural con una rica historia de batallas independentistas y vibrante vida urbana.",
+      imagen: "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=400&h=250&fit=crop" },
+>>>>>>> upstream/develop
     { nombre: "Caracas", codigo: "CCS", pais: "Venezuela", tipo: "nacional",
       descripcion: "Capital de Venezuela, vibrante metrópolis enclavada entre el Ávila y el mar Caribe, llena de cultura y diversidad.",
       imagen: "https://images.unsplash.com/photo-1534270804882-6b504792b727?w=400&h=250&fit=crop" },
@@ -128,6 +138,7 @@ const infoDestinos = [
       imagen: "https://images.unsplash.com/photo-1590523277543-a94eba7c0c8c?w=400&h=250&fit=crop" }
 ];
 
+<<<<<<< HEAD
 function renderizarDestinos() {
     const grid = document.getElementById('grid-destinos');
     grid.innerHTML = infoDestinos.map(d => `
@@ -143,6 +154,67 @@ function renderizarDestinos() {
     `).join('');
 }
 
+=======
+// --- SHOWCASE DE DESTINOS ---
+let dstActivo = 0;
+
+function renderizarDestinos() {
+    inicializarDstShowcase();
+}
+
+function inicializarDstShowcase() {
+    const thumbsEl = document.getElementById('dst-thumbs');
+    if (!thumbsEl) return;
+
+    thumbsEl.innerHTML = infoDestinos.map((d, i) => `
+        <div class="dst-thumb ${i === 0 ? 'active' : ''}" id="dstthumb-${i}" onclick="activarDst(${i})">
+            <img src="${d.imagen}" alt="${d.nombre}" loading="lazy">
+            <div class="dst-thumb-label">${d.pais.toUpperCase()}</div>
+        </div>
+    `).join('');
+
+    activarDstSilencioso(0);
+}
+
+function activarDstSilencioso(idx) {
+    const d = infoDestinos[idx];
+    const mainImg = document.getElementById('dst-main-img');
+    const mainTitulo = document.getElementById('dst-main-titulo');
+    const mainDesc = document.getElementById('dst-main-desc');
+
+    if (!mainImg) return;
+
+    mainImg.src = d.imagen;
+    mainImg.alt = d.nombre;
+    mainTitulo.textContent = `${d.nombre.toUpperCase()} - ${d.pais.toUpperCase()}`;
+    mainDesc.textContent = d.descripcion;
+
+    document.querySelectorAll('.dst-thumb').forEach((el, i) => {
+        el.classList.toggle('active', i === idx);
+    });
+
+    const thumbEl = document.getElementById(`dstthumb-${idx}`);
+    if (thumbEl) thumbEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+    dstActivo = idx;
+}
+
+function activarDst(idx) {
+    const mainImg = document.getElementById('dst-main-img');
+    if (mainImg) {
+        mainImg.style.transition = 'opacity 0.35s';
+        mainImg.style.opacity = '0';
+        setTimeout(() => {
+            activarDstSilencioso(idx);
+            mainImg.style.opacity = '1';
+        }, 300);
+    } else {
+        activarDstSilencioso(idx);
+    }
+}
+
+
+>>>>>>> upstream/develop
 function toggleCalendario(id) {
     const popup = document.getElementById(`cal-${id}`);
     if (!popup) return;
@@ -269,19 +341,38 @@ function inicializarCalendarios() {
 
 function mostrarPaso(paso) {
     const heroVisual = document.getElementById('contenedor-reserva-visual');
+<<<<<<< HEAD
     document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
     document.getElementById('seccion-itinerario').classList.add('hidden');
     document.getElementById('seccion-faq').classList.add('hidden');
     document.getElementById('seccion-destinos').classList.add('hidden');
+=======
+    const seccionDestinos = document.getElementById('seccion-destinos');
+    // Ocultar secciones de navegación
+    ['paso3','paso-restricciones','paso4','seccion-itinerario','seccion-faq','seccion-admin'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+>>>>>>> upstream/develop
 
     if (paso === 1) {
         if (heroVisual) heroVisual.classList.remove('hidden');
         document.getElementById('paso1').classList.remove('hidden');
+<<<<<<< HEAD
     } else if (paso === 5) {
         if (heroVisual) heroVisual.classList.add('hidden');
+=======
+        // Mostrar y renderizar la sección destinos solo en inicio
+        if (seccionDestinos) seccionDestinos.classList.remove('hidden');
+        renderizarDestinos();
+    } else if (paso === 5) {
+        if (heroVisual) heroVisual.classList.add('hidden');
+        if (seccionDestinos) seccionDestinos.classList.add('hidden');
+>>>>>>> upstream/develop
         document.getElementById('paso-restricciones').classList.remove('hidden');
     } else {
         if (heroVisual) heroVisual.classList.add('hidden');
+        if (seccionDestinos) seccionDestinos.classList.add('hidden');
         const seccionObjetivo = document.getElementById(`paso${paso}`);
         if (seccionObjetivo) seccionObjetivo.classList.remove('hidden');
     }
@@ -290,14 +381,22 @@ function mostrarPaso(paso) {
 function mostrarSeccion(idSeccion) {
     const heroVisual = document.getElementById('contenedor-reserva-visual');
     if (heroVisual) heroVisual.classList.add('hidden');
-    document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+    // Ocultar secciones de navegación incluyendo destinos
+    ['paso1','paso3','paso-restricciones','paso4','seccion-itinerario','seccion-faq','seccion-admin','seccion-destinos'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
 
     if (idSeccion === 'itinerario') {
         renderizarItinerario();
         document.getElementById('seccion-itinerario').classList.remove('hidden');
+<<<<<<< HEAD
     } else if (idSeccion === 'destinos') {
         renderizarDestinos();
         document.getElementById('seccion-destinos').classList.remove('hidden');
+=======
+        document.getElementById('seccion-itinerario').scrollIntoView({ behavior: 'smooth' });
+>>>>>>> upstream/develop
     } else if (idSeccion === 'faq') {
         document.getElementById('seccion-faq').classList.remove('hidden');
     }
@@ -392,6 +491,7 @@ function procesarBusqueda() {
         return; 
     }
     if (!destinoSelect || !origenInput) { alert("Complete origen y destino."); return; }
+    if (origenInput === destinoSelect) { alert("⚠️ El origen y el destino no pueden ser la misma ciudad."); return; }
     if ((ninos > 0 || infantes > 0) && adultos === 0) { alert("Los menores requieren un adulto acompañante."); return; }
     if (total === 0) { alert("Seleccione al menos un pasajero."); return; }
 
@@ -606,34 +706,183 @@ function renderizarMapaAsientos() {
     asientosOcupadosGlobal = JSON.parse(localStorage.getItem('asientosOcupados')) || [...configAvion.asientosBloqueados];
     const asientosRestringidos = obtenerAsientosBloqueadosPorRestricciones();
     const todosOcupados = [...asientosOcupadosGlobal, ...asientosRestringidos];
+<<<<<<< HEAD
+=======
+
+    const hayPasajerosRestringidosEmergencia = reserva.restricciones && reserva.restricciones.some(r =>
+        r.asistencia !== 'ninguna' || r.intelectual === 'si' || r.oxigeno !== 'no' || r.camilla === 'si' || r.otraCondicion === 'si'
+    );
+    const hayMenores = reserva.conteoCategorias && (reserva.conteoCategorias.ninos > 0 || reserva.conteoCategorias.infantes > 0);
+    const bloquearEmergenciaExtra = hayPasajerosRestringidosEmergencia || hayMenores;
+
+    // --- Cabina del avión (nariz) ---
+    const nose = document.createElement('div');
+    nose.className = 'avion-nariz';
+    nose.innerHTML = `<svg viewBox="0 0 120 60" xmlns="http://www.w3.org/2000/svg">
+        <path d="M60 4 Q100 10 115 30 Q100 50 60 56 Q20 50 5 30 Q20 10 60 4Z" fill="#dce8ff" stroke="#0052cc" stroke-width="1.5"/>
+        <text x="60" y="33" text-anchor="middle" font-size="10" fill="#0052cc" font-weight="700" font-family="sans-serif">✈</text>
+    </svg>`;
+    contenedor.appendChild(nose);
+
+    // --- Cabecera de columnas ---
+    const encabezado = document.createElement('div');
+    encabezado.className = 'mapa-header-cols';
+    encabezado.innerHTML = `
+        <span class="col-label">#</span>
+        <span class="col-label">A</span>
+        <span class="col-label col-label-club-b">B</span>
+        <span class="col-label">C</span>
+        <span class="col-pasillo-label"></span>
+        <span class="col-label">D</span>
+        <span class="col-label col-label-club-e">E</span>
+        <span class="col-label">F</span>
+    `;
+    contenedor.appendChild(encabezado);
+
+    // --- Separador de clases ---
+    let seccionClubAbierta = false;
+    let seccionTuristaAbierta = false;
+>>>>>>> upstream/develop
 
     for (let f = 1; f <= 22; f++) {
-        const filaDiv = document.createElement('div');
-        filaDiv.className = 'fila';
-        const letras = configAvion.filasClub.includes(f) ? ['A', 'C', 'pasillo', 'D', 'F'] : ['A', 'B', 'C', 'pasillo', 'D', 'E', 'F'];
+        const esClub = configAvion.filasClub.includes(f);
 
-        letras.forEach(l => {
-            if (l === 'pasillo') { filaDiv.innerHTML += '<div class="pasillo"></div>'; return; }
+        // Insertar separador de sección al cambiar de clase
+        if (esClub && !seccionClubAbierta) {
+            const sep = document.createElement('div');
+            sep.className = 'seccion-label club';
+            sep.innerHTML = '⭐ Clase Club — Filas 1–2';
+            contenedor.appendChild(sep);
+            seccionClubAbierta = true;
+        }
+        if (!esClub && !seccionTuristaAbierta) {
+            const sep = document.createElement('div');
+            sep.className = 'seccion-label turista';
+            sep.innerHTML = '💺 Clase Turista — Filas 3–22';
+            contenedor.appendChild(sep);
+            seccionTuristaAbierta = true;
+        }
+
+        const filaDiv = document.createElement('div');
+        filaDiv.className = `fila${esClub ? ' fila-club' : ' fila-turista'}`;
+
+        const esFilaEmergencia = (f === 1 || f === 10);
+        if (esFilaEmergencia) {
+            filaDiv.classList.add('fila-con-emergencia');
+            const etiqueta = document.createElement('div');
+            etiqueta.className = 'fila-emergencia-label';
+            etiqueta.innerHTML = '🚨 Salida de emergencia';
+            filaDiv.appendChild(etiqueta);
+        }
+
+        // Número de fila
+        const numFila = document.createElement('span');
+        numFila.className = 'fila-numero';
+        numFila.textContent = f;
+        filaDiv.appendChild(numFila);
+
+        // Letras según clase: Club = A C | D F  /  Turista = A B C | D E F
+        const letras = esClub
+            ? ['A', 'C', 'pasillo', 'D', 'F']
+            : ['A', 'B', 'C', 'pasillo', 'D', 'E', 'F'];
+
+        // Para Club, añadir placeholder en posición B y E para alinear con Turista
+        const letrasConPlaceholder = esClub
+            ? ['A', '__', 'C', 'pasillo', 'D', '__', 'F']
+            : ['A', 'B', 'C', 'pasillo', 'D', 'E', 'F'];
+
+        letrasConPlaceholder.forEach(l => {
+            if (l === 'pasillo') {
+                const pasillo = document.createElement('div');
+                pasillo.className = 'pasillo';
+                filaDiv.appendChild(pasillo);
+                return;
+            }
+            if (l === '__') {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'asiento-placeholder';
+                filaDiv.appendChild(placeholder);
+                return;
+            }
+
             const id = `${f}${l}`;
             const btn = document.createElement('button');
             btn.innerText = id;
+<<<<<<< HEAD
             if (todosOcupados.includes(id)) {
                 btn.className = 'asiento ocupado'; btn.disabled = true;
+=======
+            const esEmergencia = configAvion.salidasEmergencia.includes(id);
+            const esBloqueadoPorRestriccion = bloquearEmergenciaExtra && esEmergencia;
+
+            if (todosOcupados.includes(id)) {
+                btn.className = `asiento ocupado${esClub ? ' asiento-club' : ''}`;
+                btn.disabled = true;
+                btn.title = 'Asiento ocupado';
+            } else if (esBloqueadoPorRestriccion) {
+                btn.className = `asiento emergencia-bloqueado${esClub ? ' asiento-club' : ''}`;
+                btn.disabled = true;
+                btn.title = 'No disponible: salida de emergencia (no apto para menores o pasajeros con necesidades especiales)';
+>>>>>>> upstream/develop
             } else {
-                btn.className = 'asiento disponible';
+                let clases = `asiento disponible${esClub ? ' asiento-club' : ''}${esEmergencia ? ' emergencia' : ''}`;
+                btn.className = clases;
+                if (esEmergencia) btn.title = 'Asiento en salida de emergencia — solo para pasajeros adultos sin restricciones';
                 btn.onclick = () => manejarSeleccionAsiento(id, btn);
             }
             filaDiv.appendChild(btn);
         });
+
         contenedor.appendChild(filaDiv);
     }
 
+<<<<<<< HEAD
     if (asientosRestringidos.length > 0) {
         const info = document.createElement('p');
         info.style.cssText = 'margin-top:12px;font-size:13px;color:#dc3545;';
         info.textContent = `⚠️ ${asientosRestringidos.length} asiento(s) bloqueado(s) por restricciones de pasajeros.`;
         contenedor.appendChild(info);
     }
+=======
+    // --- Cola del avión ---
+    const tail = document.createElement('div');
+    tail.className = 'avion-cola';
+    contenedor.appendChild(tail);
+
+    // --- Leyenda ---
+    const leyenda = document.createElement('div');
+    leyenda.className = 'leyenda-asientos';
+    leyenda.innerHTML = `
+        <div class="leyenda-item"><span class="leyenda-box disponible"></span> Disponible</div>
+        <div class="leyenda-item"><span class="leyenda-box seleccionado"></span> Seleccionado</div>
+        <div class="leyenda-item"><span class="leyenda-box ocupado"></span> Ocupado</div>
+        <div class="leyenda-item"><span class="leyenda-box emergencia"></span> Salida emergencia</div>
+        <div class="leyenda-item"><span class="leyenda-box emergencia-bloqueado"></span> Bloqueado</div>
+    `;
+    contenedor.appendChild(leyenda);
+
+    // --- Contador de selección ---
+    const contador = document.createElement('div');
+    contador.id = 'contador-asientos';
+    contador.className = 'contador-asientos';
+    contador.textContent = `Seleccionados: 0 / ${reserva.cantidadBoletos}`;
+    contenedor.appendChild(contador);
+
+    if (asientosRestringidos.length > 0) {
+        const info = document.createElement('p');
+        info.style.cssText = 'margin-top:8px;font-size:13px;color:#dc3545;text-align:center;';
+        info.textContent = `⚠️ ${asientosRestringidos.length} asiento(s) bloqueado(s) por restricciones de pasajeros.`;
+        contenedor.appendChild(info);
+    }
+
+    // --- Botón Finalizar ---
+    const btnFinalizar = document.createElement('button');
+    btnFinalizar.className = 'btn-primario';
+    btnFinalizar.style.cssText = 'margin-top:20px;display:block;width:100%;max-width:320px;margin-left:auto;margin-right:auto;';
+    btnFinalizar.textContent = 'Finalizar Reserva';
+    btnFinalizar.onclick = finalizarReserva;
+    contenedor.appendChild(btnFinalizar);
+>>>>>>> upstream/develop
 }
 
 function manejarSeleccionAsiento(id, elemento) {
@@ -644,7 +893,16 @@ function manejarSeleccionAsiento(id, elemento) {
     } else if (reserva.asientos.length < reserva.cantidadBoletos) {
         reserva.asientos.push(id);
         elemento.classList.add('seleccionado');
+    } else {
+        const cont = document.getElementById('contador-asientos');
+        if (cont) {
+            cont.classList.add('contador-alerta');
+            setTimeout(() => cont.classList.remove('contador-alerta'), 600);
+        }
+        return;
     }
+    const cont = document.getElementById('contador-asientos');
+    if (cont) cont.textContent = `Seleccionados: ${reserva.asientos.length} / ${reserva.cantidadBoletos}`;
 }
 
 // --- 6. CIERRE: GUARDAR Y PRINT ---
@@ -657,6 +915,25 @@ function finalizarReserva() {
     // 1. Guardar en historial y actualizar puestos ocupados (JSON persistente)
     asientosOcupadosGlobal.push(...reserva.asientos);
     localStorage.setItem('asientosOcupados', JSON.stringify(asientosOcupadosGlobal));
+
+    // 1b. Guardar reserva completa para el panel de administración
+    const reservasGuardadas = JSON.parse(localStorage.getItem('reservasAdmin')) || [];
+    const nuevaReserva = {
+        id: 'RES-' + Date.now(),
+        fecha: new Date().toISOString(),
+        origen: reserva.origen,
+        destino: reserva.destino,
+        tipoViaje: reserva.tipoViaje,
+        pasajeros: reserva.pasajeros.map((p, i) => ({
+            nombre: p.nombre,
+            cedula: p.cedula,
+            edad: p.edad,
+            asiento: reserva.asientos[i] || '-'
+        })),
+        asientos: [...reserva.asientos]
+    };
+    reservasGuardadas.push(nuevaReserva);
+    localStorage.setItem('reservasAdmin', JSON.stringify(reservasGuardadas));
 
     // 2. Generar ventana de impresión
     const ventanaPrint = window.open('', '_blank');
@@ -699,16 +976,95 @@ function finalizarReserva() {
 
 function renderizarItinerario() {
     const contenedor = document.getElementById('tabla-vuelos');
-    let tabla = `<table><thead><tr><th>Vuelo</th><th>Destino</th><th>Hora</th><th>Estado</th></tr></thead><tbody>`;
-    baseDeDatosVuelos.forEach(v => {
-        tabla += `<tr><td>${v.nro}</td><td>${v.destino}</td><td>${v.salida}</td>
-                  <td style="color:${v.estado === 'Retrasado' ? 'red' : 'green'}">${v.estado}</td></tr>`;
+
+    // Intentar leer vuelos sincronizados desde el panel admin
+    const syncRaw = localStorage.getItem('itinerarioSync');
+    let vuelos = baseDeDatosVuelos;
+    if (syncRaw) {
+        try { vuelos = JSON.parse(syncRaw); } catch(e) {}
+    }
+
+    const coloresEstado = {
+        'A tiempo':   { color: '#166534', bg: '#dcfce7' },
+        'Embarcando': { color: '#1e40af', bg: '#dbeafe' },
+        'Retrasado':  { color: '#854d0e', bg: '#fef9c3' },
+        'Cancelado':  { color: '#991b1b', bg: '#fee2e2' },
+        'Aterrizado': { color: '#374151', bg: '#f3f4f6' },
+    };
+
+    let tabla = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Vuelo</th>
+                    <th>Origen</th>
+                    <th>Destino</th>
+                    <th>Hora Salida</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    vuelos.forEach(v => {
+        const esAdmin = !!v.origen; // los vuelos del admin tienen campo origen
+        const origen = esAdmin ? v.origen : (v.origen || '—');
+        const destino = esAdmin ? v.destino : (v.destino || '—');
+        // Si la hora viene en formato 24h (admin) la convertimos; si ya es 12h la dejamos
+        const hora = esAdmin
+            ? formatearHora12Admin(v.salida)
+            : (v.salida || '—');
+        const fecha = esAdmin && v.fecha ? v.fecha : '—';
+        const estado = v.estado || 'A tiempo';
+        const col = coloresEstado[estado] || coloresEstado['A tiempo'];
+
+        tabla += `
+            <tr>
+                <td><strong>${v.nro || v.id || '—'}</strong></td>
+                <td>${origen}</td>
+                <td>${destino}</td>
+                <td>${hora}</td>
+                <td>${fecha}</td>
+                <td>
+                    <span style="
+                        display:inline-flex; align-items:center; gap:6px;
+                        background:${col.bg}; color:${col.color};
+                        font-size:12px; font-weight:700;
+                        padding:4px 10px; border-radius:20px;
+                    ">
+                        <span style="width:7px;height:7px;border-radius:50%;background:${col.color};display:inline-block;"></span>
+                        ${estado}
+                    </span>
+                </td>
+            </tr>`;
     });
+
     contenedor.innerHTML = tabla + `</tbody></table>`;
 }
 
+// Helper: convierte "15:00" → "03:00 PM" (para mostrar en itinerario, igual que admin)
+function formatearHora12Admin(hora24) {
+    if (!hora24 || !hora24.includes(':')) return hora24 || '—';
+    let [h, m] = hora24.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+<<<<<<< HEAD
     inicializarCalendarios();
+=======
+    // Siempre arrancar en la vista inicial (hero + paso 1) al cargar/recargar
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('role') !== 'admin') {
+        mostrarPaso(1);
+    }
+
+    inicializarCalendarios();
+    // Renderizar destinos siempre visibles al cargar
+    renderizarDestinos();
+>>>>>>> upstream/develop
     const toggleViaje = document.getElementById('tipo-viaje');
     if (toggleViaje) {
         toggleViaje.addEventListener('change', function() {
@@ -794,8 +1150,18 @@ function cerrarModalSiOverlay(event) {
 
 function seleccionarDestino(valor, pais) {
     if (modalModo === 'origen') {
+        const destinoActual = document.getElementById('destino-select').value;
+        if (destinoActual && destinoActual === valor) {
+            alert("⚠️ El origen no puede ser igual al destino. Por favor elige otra ciudad.");
+            return;
+        }
         document.getElementById('origen').value = valor;
     } else {
+        const origenActual = document.getElementById('origen').value;
+        if (origenActual && origenActual === valor) {
+            alert("⚠️ El destino no puede ser igual al origen. Por favor elige otra ciudad.");
+            return;
+        }
         document.getElementById('destino-select').value = valor;
     }
     cerrarModal();
