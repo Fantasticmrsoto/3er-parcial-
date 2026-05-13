@@ -47,6 +47,20 @@ body {
     background: rgba(0, 82, 204, 0.5);
 }
 
+/* Botón Admin en navbar */
+.nav-links a.nav-admin-btn {
+    color: rgba(255,255,255,0.6);
+    font-size: 12px;
+    padding: 4px 10px;
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+}
+.nav-links a.nav-admin-btn:hover {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+}
+
 .logo-wrapper {
     display: flex;
     align-items: center;
@@ -113,6 +127,7 @@ body {
     margin-bottom: 10px;
     font-weight: bold;
     color: #ffffff;
+    gap: 8px;
 }
 
 .switch {
@@ -1546,5 +1561,129 @@ tbody tr:last-child td { border-bottom: none; }
 .contador-asientos.contador-alerta {
     background: #fee2e2;
     color: #dc2626;
+<<<<<<< HEAD
+>>>>>>> upstream/develop
+=======
+}
+
+/* --- 9. WEB CHECK-IN --- */
+.btn-checkin {
+    background: #22c55e;
+    color: white;
+    border: none;
+    padding: 5px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: auto;
+    transition: background 0.2s;
+    letter-spacing: 0.3px;
+}
+.btn-checkin:hover {
+    background: #16a34a;
+}
+
+.modal-checkin {
+    background: #fff;
+    border-radius: 20px;
+    width: 92%;
+    max-width: 460px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0, 40, 120, 0.35);
+    animation: slideUpModal 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-checkin-body {
+    padding: 28px 28px 32px;
+    text-align: left;
+}
+
+.checkin-form-group {
+    margin-bottom: 18px;
+}
+
+.checkin-form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #172b4d;
+    margin-bottom: 6px;
+}
+
+.checkin-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 14px;
+    border: 1.5px solid #dce8ff;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #172b4d;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.15s;
+}
+.checkin-input:focus {
+    border-color: #0052cc;
+    box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.1);
+}
+
+.checkin-mensaje {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+.checkin-mensaje.exito {
+    background: #dcfce7;
+    color: #166534;
+}
+.checkin-mensaje.error {
+    background: #fee2e2;
+    color: #991b1b;
+}
+.checkin-mensaje.hidden {
+    display: none;
+}
+
+.checkin-acciones {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-checkin-confirmar {
+    flex: 1;
+    background: #22c55e;
+    color: white;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+    min-width: 140px;
+}
+.btn-checkin-confirmar:hover {
+    background: #16a34a;
+}
+
+.btn-checkin-cancelar {
+    flex: 1;
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+    min-width: 140px;
+}
+.btn-checkin-cancelar:hover {
+    background: #dc2626;
 >>>>>>> upstream/develop
 }

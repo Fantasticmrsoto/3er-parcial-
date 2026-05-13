@@ -76,20 +76,14 @@ function cargarAsientosOcupados() {
 // ─────────────────────────────────────────────
 
 function inicializarAdmin() {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('role') !== 'admin') return;
-
-    // Ocultar todo el contenido principal
-    const hero = document.getElementById('contenedor-reserva-visual');
-    if (hero) hero.classList.add('hidden');
-    document.querySelectorAll('#app section').forEach(s => s.classList.add('hidden'));
-
+    // El panel admin se muestra/oculta desde mostrarSeccion('admin') en script.js.
+    // Aquí solo construimos el contenido si la sección existe y aún no fue inicializada.
     const seccionAdmin = document.getElementById('seccion-admin');
     if (!seccionAdmin) return;
+    if (seccionAdmin.dataset.initialized) return; // ya construido
 
-    seccionAdmin.classList.remove('hidden');
     seccionAdmin.innerHTML = construirLayoutAdmin();
-
+    seccionAdmin.dataset.initialized = 'true';
     activarPestana('vuelos');
 }
 
@@ -113,6 +107,9 @@ function construirLayoutAdmin() {
                 <button class="adm-nav-btn" id="tab-btn-clientes" onclick="activarPestana('clientes')">
                     <span class="adm-nav-icon">👥</span> Clientes
                 </button>
+                <button class="adm-nav-btn" id="tab-btn-checkins" onclick="activarPestana('checkins')">
+                    <span class="adm-nav-icon">🛂</span> Web Check-In
+                </button>
                 <button class="adm-nav-btn" id="tab-btn-stats" onclick="activarPestana('stats')">
                     <span class="adm-nav-icon">📊</span> Estadísticas
                 </button>
@@ -127,6 +124,7 @@ function construirLayoutAdmin() {
         <main class="adm-main">
             <div id="adm-tab-vuelos" class="adm-tab"></div>
             <div id="adm-tab-clientes" class="adm-tab hidden"></div>
+            <div id="adm-tab-checkins" class="adm-tab hidden"></div>
             <div id="adm-tab-stats" class="adm-tab hidden"></div>
         </main>
 
@@ -150,7 +148,7 @@ function construirLayoutAdmin() {
 // ─────────────────────────────────────────────
 
 function activarPestana(tab) {
-    ['vuelos', 'clientes', 'stats'].forEach(t => {
+    ['vuelos', 'clientes', 'checkins', 'stats'].forEach(t => {
         document.getElementById(`adm-tab-${t}`)?.classList.add('hidden');
         document.getElementById(`tab-btn-${t}`)?.classList.remove('active');
     });
@@ -159,6 +157,7 @@ function activarPestana(tab) {
 
     if (tab === 'vuelos')   renderTabVuelos();
     if (tab === 'clientes') renderTabClientes();
+    if (tab === 'checkins') renderTabCheckins();
     if (tab === 'stats')    renderTabStats();
 }
 
@@ -393,7 +392,11 @@ function renderTabClientes() {
                 origen: r.origen,
                 destino: r.destino,
                 fecha: r.fecha ? r.fecha.split('T')[0] : '—',
-                reservaId: r.id
+                reservaId: r.id,
+                checkin: r.checkin || 'pendiente',
+                checkinFecha: r.checkinFecha || null,
+                cancelacionFecha: r.cancelacionFecha || null,
+                asientos: r.asientos || []
             });
         });
     });
@@ -442,10 +445,24 @@ function renderTabClientes() {
                         <th>Ruta</th>
                         <th>Fecha reserva</th>
                         <th>ID Reserva</th>
+                        <th>Check-In</th>
                     </tr>
                 </thead>
                 <tbody id="tbody-clientes">
-                    ${clientes.map(c => `
+                    ${clientes.map(c => {
+                        const chk = c.checkin;
+                        let chkColor, chkBg, chkLabel, chkTooltip;
+                        if (chk === 'confirmado') {
+                            chkColor = '#166534'; chkBg = '#dcfce7'; chkLabel = '✓ Confirmado';
+                            chkTooltip = c.checkinFecha ? `Confirmado: ${new Date(c.checkinFecha).toLocaleString('es-VE')}` : '';
+                        } else if (chk === 'cancelado') {
+                            chkColor = '#991b1b'; chkBg = '#fee2e2'; chkLabel = '✕ Cancelado';
+                            chkTooltip = c.cancelacionFecha ? `Cancelado: ${new Date(c.cancelacionFecha).toLocaleString('es-VE')}` : '';
+                        } else {
+                            chkColor = '#854d0e'; chkBg = '#fef9c3'; chkLabel = '⏳ Pendiente';
+                            chkTooltip = 'El pasajero aún no ha realizado el web check-in';
+                        }
+                        return `
                     <tr data-busqueda="${c.nombre.toLowerCase()} ${c.cedula.toLowerCase()} ${c.destino.toLowerCase()} ${c.origen.toLowerCase()}">
                         <td><strong>${c.nombre}</strong></td>
                         <td><code>${c.cedula}</code></td>
@@ -454,7 +471,8 @@ function renderTabClientes() {
                         <td>${c.origen} <span style="color:#0052cc">→</span> ${c.destino}</td>
                         <td>${formatearFecha(c.fecha)}</td>
                         <td><span class="adm-badge-res">${c.reservaId}</span></td>
-                    </tr>`).join('')}
+                        <td><span class="adm-estado-badge" style="background:${chkBg};color:${chkColor};font-size:11px" title="${chkTooltip}">${chkLabel}</span></td>
+                    </tr>`;}).join('')}
                 </tbody>
             </table>
         </div>`;
@@ -484,6 +502,148 @@ function exportarClientesCSV() {
 }
 
 // ─────────────────────────────────────────────
+// 4b. PESTAÑA: WEB CHECK-IN
+// ─────────────────────────────────────────────
+
+function renderTabCheckins() {
+    const reservas = cargarReservas();
+    const container = document.getElementById('adm-tab-checkins');
+
+    const confirmados = reservas.filter(r => r.checkin === 'confirmado');
+    const cancelados  = reservas.filter(r => r.checkin === 'cancelado');
+    const pendientes  = reservas.filter(r => !r.checkin || r.checkin === 'pendiente');
+
+    if (reservas.length === 0) {
+        container.innerHTML = `
+            <div class="adm-tab-header">
+                <div>
+                    <h2 class="adm-tab-titulo">Web Check-In</h2>
+                    <p class="adm-tab-sub">Estado de check-in por reserva</p>
+                </div>
+            </div>
+            <div class="adm-empty-state">
+                <div class="adm-empty-icon">🛂</div>
+                <h3>Sin reservas registradas</h3>
+                <p>Aún no hay reservas en el sistema. Los estados de web check-in aparecerán aquí una vez que los pasajeros completen su reserva.</p>
+            </div>`;
+        return;
+    }
+
+    const filaCheckin = (r) => {
+        const chk = r.checkin || 'pendiente';
+        let chkColor, chkBg, chkLabel, chkFecha;
+        if (chk === 'confirmado') {
+            chkColor = '#166534'; chkBg = '#dcfce7'; chkLabel = '✓ Confirmado';
+            chkFecha = r.checkinFecha ? new Date(r.checkinFecha).toLocaleString('es-VE') : '—';
+        } else if (chk === 'cancelado') {
+            chkColor = '#991b1b'; chkBg = '#fee2e2'; chkLabel = '✕ Cancelado';
+            chkFecha = r.cancelacionFecha ? new Date(r.cancelacionFecha).toLocaleString('es-VE') : '—';
+        } else {
+            chkColor = '#854d0e'; chkBg = '#fef9c3'; chkLabel = '⏳ Pendiente';
+            chkFecha = '—';
+        }
+        const pasajerosPrincipal = r.pasajeros?.[0]?.nombre || '—';
+        const totalPax = r.pasajeros?.length || 0;
+        const asientos = (r.asientos || []).join(', ') || '—';
+
+        return `
+        <tr data-busqueda="${r.id.toLowerCase()} ${(r.origen||'').toLowerCase()} ${(r.destino||'').toLowerCase()} ${chk}">
+            <td><span class="adm-badge-res">${r.id}</span></td>
+            <td><strong>${pasajerosPrincipal}</strong>${totalPax > 1 ? `<span style="color:#8fa8d4;font-size:11px;margin-left:4px">+${totalPax-1} más</span>` : ''}</td>
+            <td>${r.origen || '—'} <span style="color:#0052cc">→</span> ${r.destino || '—'}</td>
+            <td><span style="font-size:12px;color:#5f7a9e">${asientos}</span></td>
+            <td>
+                <span class="adm-estado-badge" style="background:${chkBg};color:${chkColor};font-size:11px">
+                    ${chkLabel}
+                </span>
+            </td>
+            <td style="font-size:12px;color:#5f7a9e">${chkFecha}</td>
+            <td>
+                ${chk === 'cancelado' ? `<span style="font-size:11px;color:#8fa8d4;font-style:italic">Asientos liberados</span>` :
+                  chk === 'confirmado' ? `<span style="font-size:11px;color:#22c55e;font-weight:700">✓ Listo para abordar</span>` :
+                  `<button class="adm-btn-icon adm-btn-delete" title="Cancelar reserva" onclick="cancelarReservaAdmin('${r.id}')" style="width:auto;padding:4px 10px;font-size:11px;font-weight:700;color:#ef4444">Cancelar reserva</button>`}
+            </td>
+        </tr>`;
+    };
+
+    container.innerHTML = `
+        <div class="adm-tab-header">
+            <div>
+                <h2 class="adm-tab-titulo">Web Check-In</h2>
+                <p class="adm-tab-sub">${reservas.length} reserva(s) — ${confirmados.length} confirmada(s) · ${pendientes.length} pendiente(s) · ${cancelados.length} cancelada(s)</p>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:120px;background:white;border-radius:12px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,50,150,0.06);border-top:3px solid #22c55e">
+                <div style="font-size:28px;font-weight:900;color:#166534">${confirmados.length}</div>
+                <div style="font-size:12px;color:#8fa8d4;font-weight:600;margin-top:2px">✓ Confirmados</div>
+            </div>
+            <div style="flex:1;min-width:120px;background:white;border-radius:12px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,50,150,0.06);border-top:3px solid #eab308">
+                <div style="font-size:28px;font-weight:900;color:#854d0e">${pendientes.length}</div>
+                <div style="font-size:12px;color:#8fa8d4;font-weight:600;margin-top:2px">⏳ Pendientes</div>
+            </div>
+            <div style="flex:1;min-width:120px;background:white;border-radius:12px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,50,150,0.06);border-top:3px solid #ef4444">
+                <div style="font-size:28px;font-weight:900;color:#991b1b">${cancelados.length}</div>
+                <div style="font-size:12px;color:#8fa8d4;font-weight:600;margin-top:2px">✕ Cancelados</div>
+            </div>
+        </div>
+
+        <div class="adm-search-bar">
+            <span>🔍</span>
+            <input type="text" id="buscador-checkins" placeholder="Buscar por código, nombre, destino o estado..."
+                   oninput="filtrarTablaCheckins()" class="adm-input-search">
+        </div>
+
+        <div class="adm-table-wrap">
+            <table class="adm-table" id="tabla-checkins">
+                <thead>
+                    <tr>
+                        <th>Código Reserva</th>
+                        <th>Pasajero Principal</th>
+                        <th>Ruta</th>
+                        <th>Asientos</th>
+                        <th>Estado Check-In</th>
+                        <th>Fecha Acción</th>
+                        <th>Acción Admin</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-checkins">
+                    ${reservas.map(r => filaCheckin(r)).join('')}
+                </tbody>
+            </table>
+        </div>`;
+}
+
+function filtrarTablaCheckins() {
+    const q = document.getElementById('buscador-checkins')?.value.toLowerCase() || '';
+    document.querySelectorAll('#tbody-checkins tr').forEach(row => {
+        const texto = row.dataset.busqueda || '';
+        row.style.display = (!q || texto.includes(q)) ? '' : 'none';
+    });
+}
+
+function cancelarReservaAdmin(id) {
+    if (!confirm(`¿Cancelar la reserva ${id} desde el panel de administración? Los asientos serán liberados.`)) return;
+    const reservas = JSON.parse(localStorage.getItem('reservasAdmin')) || [];
+    const idx = reservas.findIndex(r => r.id === id);
+    if (idx === -1) { mostrarToast('Reserva no encontrada'); return; }
+    const reserva = reservas[idx];
+
+    // Liberar asientos
+    const asientosOcupados = JSON.parse(localStorage.getItem('asientosOcupados')) || [];
+    const asientosActualizados = asientosOcupados.filter(a => !(reserva.asientos || []).includes(a));
+    localStorage.setItem('asientosOcupados', JSON.stringify(asientosActualizados));
+
+    reserva.checkin = 'cancelado';
+    reserva.cancelacionFecha = new Date().toISOString();
+    reservas[idx] = reserva;
+    localStorage.setItem('reservasAdmin', JSON.stringify(reservas));
+    mostrarToast(`Reserva ${id} cancelada — asientos liberados ✓`);
+    renderTabCheckins();
+}
+
+// ─────────────────────────────────────────────
 // 5. PESTAÑA: ESTADÍSTICAS
 // ─────────────────────────────────────────────
 
@@ -494,6 +654,11 @@ function renderTabStats() {
 
     const totalPasajeros = reservas.reduce((s, r) => s + (r.pasajeros?.length || 0), 0);
     const porcOcupacion  = Math.round((ocupados.length / 128) * 100);
+
+    // Conteo de check-ins
+    const checkinConfirmados = reservas.filter(r => r.checkin === 'confirmado').length;
+    const checkinCancelados  = reservas.filter(r => r.checkin === 'cancelado').length;
+    const checkinPendientes  = reservas.filter(r => !r.checkin || r.checkin === 'pendiente').length;
 
     // Conteo de vuelos por estado
     const porEstado = {};
@@ -536,6 +701,21 @@ function renderTabStats() {
                 <div class="adm-stat-icon">📋</div>
                 <div class="adm-stat-val">${reservas.length}</div>
                 <div class="adm-stat-lbl">Reservas completadas</div>
+            </div>
+            <div class="adm-stat-card" style="border-top:3px solid #22c55e">
+                <div class="adm-stat-icon">✅</div>
+                <div class="adm-stat-val">${checkinConfirmados}</div>
+                <div class="adm-stat-lbl">Check-In confirmados</div>
+            </div>
+            <div class="adm-stat-card" style="border-top:3px solid #eab308">
+                <div class="adm-stat-icon">⏳</div>
+                <div class="adm-stat-val">${checkinPendientes}</div>
+                <div class="adm-stat-lbl">Check-In pendientes</div>
+            </div>
+            <div class="adm-stat-card" style="border-top:3px solid #ef4444">
+                <div class="adm-stat-icon">❌</div>
+                <div class="adm-stat-val">${checkinCancelados}</div>
+                <div class="adm-stat-lbl">Reservas canceladas</div>
             </div>
         </div>
 
