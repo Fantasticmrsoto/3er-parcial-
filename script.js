@@ -72,7 +72,6 @@ function toggleDropdown(event) {
 function cambiarCant(id, cambio) {
     const input = document.getElementById(id);
     
-    // Validación de límite máximo de 8 en tiempo real
     const adultos = parseInt(document.getElementById('cant-adultos').value) || 0;
     const ninos = parseInt(document.getElementById('cant-ninos').value) || 0;
     const infantes = parseInt(document.getElementById('cant-infantes').value) || 0;
@@ -82,6 +81,41 @@ function cambiarCant(id, cambio) {
     if (cambio > 0 && totalActual >= 8) {
         alert("⚠️ ADVERTENCIA: Solo puede registrar un máximo de 8 pasajeros.");
         return;
+    }
+
+    if (id === 'cant-ninos' && cambio > 0) {
+        if (ninos >= 4) {
+            alert("⚠️ Máximo 4 niños.");
+            return;
+        }
+        if (ninos >= adultos * 2) {
+            alert("⚠️ Máximo 2 niños por adulto.");
+            return;
+        }
+    }
+
+    if (id === 'cant-infantes' && cambio > 0) {
+        if (infantes >= 4) {
+            alert("⚠️ Máximo 4 infantes.");
+            return;
+        }
+        if (infantes >= adultos) {
+            alert("⚠️ La cantidad de infantes no puede superar la de adultos.");
+            return;
+        }
+    }
+
+    if (id === 'cant-mayores') {
+        const adultInput = document.getElementById('cant-adultos');
+        if (cambio > 0) {
+            if (adultos <= 0) {
+                alert("No hay adultos disponibles para convertir a mayor.");
+                return;
+            }
+            adultInput.value = adultos - 1;
+        } else if (cambio < 0) {
+            adultInput.value = adultos + 1;
+        }
     }
 
     let valor = parseInt(input.value) + cambio;
