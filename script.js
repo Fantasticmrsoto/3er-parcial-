@@ -132,20 +132,64 @@ const infoDestinos = [
       imagen: "https://images.unsplash.com/photo-1590523277543-a94eba7c0c8c?w=400&h=250&fit=crop" }
 ];
 
+// --- SHOWCASE DE DESTINOS ---
+let dstActivo = 0;
+
 function renderizarDestinos() {
-    const grid = document.getElementById('grid-destinos');
-    grid.innerHTML = infoDestinos.map(d => `
-        <div class="destino-card" onclick="seleccionarDestino('${d.nombre} (${d.codigo})', '${d.pais}'); mostrarPaso(1)">
-            <img class="destino-img" src="${d.imagen}" alt="${d.nombre}" loading="lazy">
-            <div class="destino-body">
-                <span class="destino-badge ${d.tipo}">${d.tipo}</span>
-                <h3 class="destino-titulo">${d.nombre} <span class="destino-codigo">(${d.codigo})</span></h3>
-                <span class="destino-pais">${d.pais}</span>
-                <p class="destino-descripcion">${d.descripcion}</p>
-            </div>
+    inicializarDstShowcase();
+}
+
+function inicializarDstShowcase() {
+    const thumbsEl = document.getElementById('dst-thumbs');
+    if (!thumbsEl) return;
+
+    thumbsEl.innerHTML = infoDestinos.map((d, i) => `
+        <div class="dst-thumb ${i === 0 ? 'active' : ''}" id="dstthumb-${i}" onclick="activarDst(${i})">
+            <img src="${d.imagen}" alt="${d.nombre}" loading="lazy">
+            <div class="dst-thumb-label">${d.pais.toUpperCase()}</div>
         </div>
     `).join('');
+
+    activarDstSilencioso(0);
 }
+
+function activarDstSilencioso(idx) {
+    const d = infoDestinos[idx];
+    const mainImg = document.getElementById('dst-main-img');
+    const mainTitulo = document.getElementById('dst-main-titulo');
+    const mainDesc = document.getElementById('dst-main-desc');
+
+    if (!mainImg) return;
+
+    mainImg.src = d.imagen;
+    mainImg.alt = d.nombre;
+    mainTitulo.textContent = `${d.nombre.toUpperCase()} - ${d.pais.toUpperCase()}`;
+    mainDesc.textContent = d.descripcion;
+
+    document.querySelectorAll('.dst-thumb').forEach((el, i) => {
+        el.classList.toggle('active', i === idx);
+    });
+
+    const thumbEl = document.getElementById(`dstthumb-${idx}`);
+    if (thumbEl) thumbEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+    dstActivo = idx;
+}
+
+function activarDst(idx) {
+    const mainImg = document.getElementById('dst-main-img');
+    if (mainImg) {
+        mainImg.style.transition = 'opacity 0.35s';
+        mainImg.style.opacity = '0';
+        setTimeout(() => {
+            activarDstSilencioso(idx);
+            mainImg.style.opacity = '1';
+        }, 300);
+    } else {
+        activarDstSilencioso(idx);
+    }
+}
+
 
 function toggleCalendario(id) {
     const popup = document.getElementById(`cal-${id}`);
@@ -273,19 +317,26 @@ function inicializarCalendarios() {
 
 function mostrarPaso(paso) {
     const heroVisual = document.getElementById('contenedor-reserva-visual');
-    document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
-    document.getElementById('seccion-itinerario').classList.add('hidden');
-    document.getElementById('seccion-faq').classList.add('hidden');
-    document.getElementById('seccion-destinos').classList.add('hidden');
+    const seccionDestinos = document.getElementById('seccion-destinos');
+    // Ocultar secciones de navegación
+    ['paso3','paso-restricciones','paso4','seccion-itinerario','seccion-faq','seccion-admin'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
 
     if (paso === 1) {
         if (heroVisual) heroVisual.classList.remove('hidden');
         document.getElementById('paso1').classList.remove('hidden');
+        // Mostrar y renderizar la sección destinos solo en inicio
+        if (seccionDestinos) seccionDestinos.classList.remove('hidden');
+        renderizarDestinos();
     } else if (paso === 5) {
         if (heroVisual) heroVisual.classList.add('hidden');
+        if (seccionDestinos) seccionDestinos.classList.add('hidden');
         document.getElementById('paso-restricciones').classList.remove('hidden');
     } else {
         if (heroVisual) heroVisual.classList.add('hidden');
+        if (seccionDestinos) seccionDestinos.classList.add('hidden');
         const seccionObjetivo = document.getElementById(`paso${paso}`);
         if (seccionObjetivo) seccionObjetivo.classList.remove('hidden');
     }
@@ -294,14 +345,16 @@ function mostrarPaso(paso) {
 function mostrarSeccion(idSeccion) {
     const heroVisual = document.getElementById('contenedor-reserva-visual');
     if (heroVisual) heroVisual.classList.add('hidden');
-    document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+    // Ocultar secciones de navegación incluyendo destinos
+    ['paso1','paso3','paso-restricciones','paso4','seccion-itinerario','seccion-faq','seccion-admin','seccion-destinos'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
 
     if (idSeccion === 'itinerario') {
         renderizarItinerario();
         document.getElementById('seccion-itinerario').classList.remove('hidden');
-    } else if (idSeccion === 'destinos') {
-        renderizarDestinos();
-        document.getElementById('seccion-destinos').classList.remove('hidden');
+        document.getElementById('seccion-itinerario').scrollIntoView({ behavior: 'smooth' });
     } else if (idSeccion === 'faq') {
         document.getElementById('seccion-faq').classList.remove('hidden');
     }
@@ -864,16 +917,91 @@ function finalizarReserva() {
 
 function renderizarItinerario() {
     const contenedor = document.getElementById('tabla-vuelos');
-    let tabla = `<table><thead><tr><th>Vuelo</th><th>Destino</th><th>Hora</th><th>Estado</th></tr></thead><tbody>`;
-    baseDeDatosVuelos.forEach(v => {
-        tabla += `<tr><td>${v.nro}</td><td>${v.destino}</td><td>${v.salida}</td>
-                  <td style="color:${v.estado === 'Retrasado' ? 'red' : 'green'}">${v.estado}</td></tr>`;
+
+    // Intentar leer vuelos sincronizados desde el panel admin
+    const syncRaw = localStorage.getItem('itinerarioSync');
+    let vuelos = baseDeDatosVuelos;
+    if (syncRaw) {
+        try { vuelos = JSON.parse(syncRaw); } catch(e) {}
+    }
+
+    const coloresEstado = {
+        'A tiempo':   { color: '#166534', bg: '#dcfce7' },
+        'Embarcando': { color: '#1e40af', bg: '#dbeafe' },
+        'Retrasado':  { color: '#854d0e', bg: '#fef9c3' },
+        'Cancelado':  { color: '#991b1b', bg: '#fee2e2' },
+        'Aterrizado': { color: '#374151', bg: '#f3f4f6' },
+    };
+
+    let tabla = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Vuelo</th>
+                    <th>Origen</th>
+                    <th>Destino</th>
+                    <th>Hora Salida</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    vuelos.forEach(v => {
+        const esAdmin = !!v.origen; // los vuelos del admin tienen campo origen
+        const origen = esAdmin ? v.origen : (v.origen || '—');
+        const destino = esAdmin ? v.destino : (v.destino || '—');
+        // Si la hora viene en formato 24h (admin) la convertimos; si ya es 12h la dejamos
+        const hora = esAdmin
+            ? formatearHora12Admin(v.salida)
+            : (v.salida || '—');
+        const fecha = esAdmin && v.fecha ? v.fecha : '—';
+        const estado = v.estado || 'A tiempo';
+        const col = coloresEstado[estado] || coloresEstado['A tiempo'];
+
+        tabla += `
+            <tr>
+                <td><strong>${v.nro || v.id || '—'}</strong></td>
+                <td>${origen}</td>
+                <td>${destino}</td>
+                <td>${hora}</td>
+                <td>${fecha}</td>
+                <td>
+                    <span style="
+                        display:inline-flex; align-items:center; gap:6px;
+                        background:${col.bg}; color:${col.color};
+                        font-size:12px; font-weight:700;
+                        padding:4px 10px; border-radius:20px;
+                    ">
+                        <span style="width:7px;height:7px;border-radius:50%;background:${col.color};display:inline-block;"></span>
+                        ${estado}
+                    </span>
+                </td>
+            </tr>`;
     });
+
     contenedor.innerHTML = tabla + `</tbody></table>`;
 }
 
+// Helper: convierte "15:00" → "03:00 PM" (para mostrar en itinerario, igual que admin)
+function formatearHora12Admin(hora24) {
+    if (!hora24 || !hora24.includes(':')) return hora24 || '—';
+    let [h, m] = hora24.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Siempre arrancar en la vista inicial (hero + paso 1) al cargar/recargar
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('role') !== 'admin') {
+        mostrarPaso(1);
+    }
+
     inicializarCalendarios();
+    // Renderizar destinos siempre visibles al cargar
+    renderizarDestinos();
     const toggleViaje = document.getElementById('tipo-viaje');
     if (toggleViaje) {
         toggleViaje.addEventListener('change', function() {

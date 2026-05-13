@@ -50,11 +50,14 @@ function cargarVuelos() {
 
 function guardarVuelos(vuelos) {
     localStorage.setItem('vuelosAdmin', JSON.stringify(vuelos));
-    // Sync con el itinerario del sistema principal (baseDeDatosVuelos)
+    // Sync con el itinerario del sistema principal — mantener origen y destino completos
     const itinerario = vuelos.map(v => ({
+        id: v.id,
         nro: v.id,
-        destino: v.destino.replace(/\s*\([^)]+\)/, ''),
-        salida: formatearHora12(v.salida),
+        origen: v.origen,
+        destino: v.destino,
+        salida: v.salida,
+        fecha: v.fecha,
         estado: v.estado
     }));
     localStorage.setItem('itinerarioSync', JSON.stringify(itinerario));

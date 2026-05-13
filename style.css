@@ -1,10 +1,13 @@
 /* --- 1. ESTILOS BASE Y CUERPO --- */
+*, *::before, *::after { box-sizing: border-box; }
 body { 
     font-family: sans-serif; 
     text-align: center; 
     background: #f4f4f9; 
     margin: 0;
+    padding: 0;
 }
+#app { margin: 0; padding: 0; }
 
 .hidden { display: none; }
 
@@ -109,6 +112,7 @@ body {
     justify-content: flex-start;
     margin-bottom: 10px;
     font-weight: bold;
+    color: #ffffff;
 }
 
 .switch {
@@ -142,7 +146,7 @@ body {
     border-radius: 50%;
 }
 
-input:checked + .slider { background-color: #ff6600; }
+input:checked + .slider { background-color: #0052cc; }
 input:checked + .slider:before { transform: translateX(20px); }
 
 /* Barra Horizontal */
@@ -334,19 +338,46 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 
 /* Tabla de Itinerario */
-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
-th { background-color: #f8f8f8; color: #ff6600; }
+.seccion-titulo-wrap {
+    text-align: left;
+    margin-bottom: 24px;
+}
+.seccion-eyebrow {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #ff6600;
+    margin-bottom: 6px;
+}
+.seccion-titulo {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 900;
+    color: #111827;
+    letter-spacing: -0.3px;
+}
+.seccion-titulo-accent {
+    color: #0052cc;
+}
+
+table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+thead tr { background: #f0f5ff; }
+th { padding: 12px 14px; border-bottom: 2px solid #dce8ff; text-align: left; font-size: 12px; font-weight: 800; color: #0052cc; text-transform: uppercase; letter-spacing: 0.5px; }
+td { padding: 13px 14px; border-bottom: 1px solid #f0f4fb; text-align: left; font-size: 14px; color: #333; }
+tbody tr:hover { background: #f8faff; }
+tbody tr:last-child td { border-bottom: none; }
 
 /* --- ESTILOS DEL CARRUSEL AUTOMÁTICO --- */
 .hero-wrapper {
     position: relative;
     width: 100%;
-    height: 500px; /* Altura aumentada para mejor impacto visual */
+    height: 520px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #000; /* Fondo base para evitar destellos blancos */
+    background-color: #000;
 }
 
 .hero-slider {
@@ -403,6 +434,22 @@ th { background-color: #f8f8f8; color: #ff6600; }
 .site-header {
     position: relative;
     z-index: 20;
+}
+
+/* Search container dentro del hero, centrado */
+.hero-wrapper .search-container {
+    position: relative;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 28px 35px;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 1100px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
+    margin-bottom: 0;
 }
 
 /* --- FOOTER --- */
@@ -741,7 +788,154 @@ th { background-color: #f8f8f8; color: #ff6600; }
 /* Ajuste de los input-group para mostrar cursor pointer */
 .input-group input[readonly] { cursor: pointer; }
 
-/* --- 6. GALERÍA DE DESTINOS --- */
+/* --- SECCIÓN DESTINOS — SHOWCASE ESTILO IMAGEN REFERENCIA --- */
+.destinos-section-home {
+    background: #ffffff;
+    padding: 50px 5% 60px;
+}
+
+.destinos-section-header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.destinos-titulo-home {
+    display: inline-block;
+    margin: 0;
+    font-size: clamp(24px, 3.5vw, 36px);
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: -0.3px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid #0052cc;
+}
+
+/* Contenedor showcase */
+.dst-showcase {
+    display: flex;
+    gap: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    max-width: 1100px;
+    margin: 0 auto;
+    height: 480px;
+}
+
+/* Imagen principal */
+.dst-main {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.dst-main img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.6s ease;
+}
+
+.dst-main:hover img { transform: scale(1.03); }
+
+.dst-main-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 30px 24px 24px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.72) 40%);
+}
+
+.dst-main-titulo {
+    display: block;
+    font-size: 18px;
+    font-weight: 800;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.5);
+}
+
+.dst-main-desc {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: rgba(255,255,255,0.9);
+    max-width: 400px;
+    background: rgba(0,0,0,0.35);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border-left: 3px solid #ff6600;
+    padding: 10px 14px;
+    border-radius: 0 8px 8px 0;
+}
+
+/* Columna de miniaturas */
+.dst-thumbs {
+    width: 160px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: #0a0a0a;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #333 #0a0a0a;
+}
+
+.dst-thumbs::-webkit-scrollbar { width: 4px; }
+.dst-thumbs::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+
+.dst-thumb {
+    position: relative;
+    flex-shrink: 0;
+    height: 120px;
+    cursor: pointer;
+    overflow: hidden;
+    border-bottom: 1px solid #1a1a1a;
+    transition: opacity 0.2s;
+}
+
+.dst-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.35s ease, filter 0.35s;
+    filter: brightness(0.72);
+}
+
+.dst-thumb:hover img,
+.dst-thumb.active img {
+    transform: scale(1.06);
+    filter: brightness(1);
+}
+
+.dst-thumb.active {
+    outline: 3px solid #ff6600;
+    outline-offset: -3px;
+}
+
+.dst-thumb-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 18px 6px 6px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.8));
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    text-align: center;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* --- 6. GALERÍA DE DESTINOS (legacy, no usada) --- */
 .destinos-sub {
     color: #666;
     margin-bottom: 24px;

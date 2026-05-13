@@ -23,10 +23,8 @@
                 </div>
             </div>
             <ul class="nav-links">
-                <li><a href="#" onclick="mostrarPaso(1)">Inicio</a></li>
-                <li><a href="#" onclick="mostrarPaso(1)">Reserva</a></li>
+                <li><a href="#" onclick="mostrarPaso(1); return false;">Inicio</a></li>
                 <li><a href="#" onclick="mostrarSeccion('itinerario')">Itinerario</a></li>
-                <li><a href="#" onclick="mostrarSeccion('destinos')">Destinos</a></li>
                 <li><a href="#" onclick="mostrarSeccion('faq')">Preguntas Frecuentes</a></li>
             </ul>
         </nav>
@@ -171,7 +169,10 @@
         </section>
 
         <section id="seccion-itinerario" class="hidden content-card">
-            <h2>Itinerario de Vuelos Disponibles</h2>
+            <div class="seccion-titulo-wrap">
+                <span class="seccion-eyebrow">✈ Vuelos del día</span>
+                <h2 class="seccion-titulo">Itinerario de <span class="seccion-titulo-accent">Vuelos</span></h2>
+            </div>
             <div id="tabla-vuelos"></div>
         </section>
 
@@ -188,13 +189,29 @@
                 </div>
             </div>
         </section>
-        <section id="seccion-destinos" class="hidden content-card">
-            <h2>Nuestros Destinos</h2>
-            <p class="destinos-sub">Explora los destinos que Canaima Airlines tiene para ti</p>
-            <div id="grid-destinos" class="destinos-grid"></div>
-        </section>
         <section id="seccion-admin" class="hidden"></section>
     </div>
+
+    <!-- SECCIÓN DESTINOS — siempre visible al scrollear -->
+    <section id="seccion-destinos" class="destinos-section-home">
+        <div class="destinos-section-header">
+            <h2 class="destinos-titulo-home">Nuestros Destinos</h2>
+        </div>
+
+        <!-- Showcase principal -->
+        <div class="dst-showcase" id="dst-showcase">
+            <!-- Imagen principal -->
+            <div class="dst-main" id="dst-main">
+                <img id="dst-main-img" src="" alt="" />
+                <div class="dst-main-overlay">
+                    <span class="dst-main-titulo" id="dst-main-titulo"></span>
+                    <p class="dst-main-desc" id="dst-main-desc"></p>
+                </div>
+            </div>
+            <!-- Miniaturas derecha -->
+            <div class="dst-thumbs" id="dst-thumbs"></div>
+        </div>
+    </section>
 
     <!-- MODAL DE SELECCIÓN DE DESTINOS -->
     <div id="modal-destino" class="modal-overlay hidden" onclick="cerrarModalSiOverlay(event)">
@@ -342,11 +359,7 @@
         <div class="footer-nav">
             <a href="#" onclick="mostrarPaso(1)">Inicio</a>
             <span class="footer-sep">|</span>
-            <a href="#" onclick="mostrarPaso(1)">Reservar Vuelo</a>
-            <span class="footer-sep">|</span>
             <a href="#" onclick="mostrarSeccion('itinerario')">Itinerario</a>
-            <span class="footer-sep">|</span>
-            <a href="#" onclick="mostrarSeccion('destinos')">Destinos</a>
             <span class="footer-sep">|</span>
             <a href="#" onclick="mostrarSeccion('faq')">Preguntas Frecuentes</a>
         </div>
