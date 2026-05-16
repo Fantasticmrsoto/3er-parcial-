@@ -4,9 +4,9 @@
 
 // --- 1. ESTADO GLOBAL Y CONFIGURACIÓN ---
 const configAvion = {
-    filasClub: [1, 2], 
-    filasTurista: Array.from({ length: 20 }, (_, i) => i + 3), 
-    asientosBloqueados: ["1A", "1C", "6A", "6F", "10A", "22A", "22B", "22C"],
+    filasClub: [1, 2],
+    filasTurista: Array.from({ length: 20 }, (_, i) => i + 3),
+    asientosBloqueados: [],
     salidasEmergencia: ["1A", "1C", "1D", "1F", "10A", "10B", "10C", "10D", "10E", "10F"]
 };
 
@@ -39,12 +39,11 @@ function guardarMapaAsientosPorVuelo(map) {
     localStorage.setItem(STORAGE_ASIENTOS_POR_VUELO, JSON.stringify(map));
 }
 
-/** Asientos no disponibles para un vuelo: bloqueados de cabina + reservas de ese vuelo */
+/** Asientos no disponibles para un vuelo: solo reservas persistidas de ese vuelo (sin bloqueo fijo de cabina). */
 function obtenerAsientosOcupadosParaVuelo(idVuelo) {
     const id = normalizarIdVuelo(idVuelo);
     const map = leerMapaAsientosPorVuelo();
     const reservados = new Set(id && map[id] ? map[id] : []);
-    configAvion.asientosBloqueados.forEach(a => reservados.add(a));
     return [...reservados];
 }
 
@@ -54,7 +53,7 @@ function agregarAsientosOcupadosVuelo(idVuelo, asientosNuevos) {
     const map = leerMapaAsientosPorVuelo();
     const set = new Set(map[id] || []);
     (asientosNuevos || []).forEach(a => {
-        if (a && !configAvion.asientosBloqueados.includes(a)) set.add(a);
+        if (a) set.add(a);
     });
     map[id] = [...set];
     guardarMapaAsientosPorVuelo(map);
@@ -86,6 +85,76 @@ function liberarAsientosReserva(reserva) {
 function contarTotalAsientosReservados() {
     const map = leerMapaAsientosPorVuelo();
     return Object.values(map).reduce((acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0), 0);
+}
+
+/** Fecha local YYYY-MM-DD (evita desfase por toISOString UTC). */
+function fechaLocalISO(d = new Date()) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+/** Orden de asientos del mapa (coincide con renderizarMapaAsientos): Club AC|DF luego turista ABC|DEF. */
+function generarOrdenAsientosAvion() {
+    const orden = [];
+    for (let f = 1; f <= 22; f++) {
+        const esClub = configAvion.filasClub.includes(f);
+        const letras = esClub ? ['A', 'C', 'D', 'F'] : ['A', 'B', 'C', 'D', 'E', 'F'];
+        letras.forEach(l => orden.push(`${f}${l}`));
+    }
+    return orden;
+}
+
+/** Capacidad de venta del vuelo desde panel admin (1–128). Por defecto 128. */
+function obtenerCapacidadVueloAdmin(idVuelo) {
+    const id = normalizarIdVuelo(idVuelo);
+    if (!id) return 128;
+    try {
+        const raw = localStorage.getItem('vuelosAdmin');
+        if (!raw) return 128;
+        const vuelos = JSON.parse(raw);
+        if (!Array.isArray(vuelos)) return 128;
+        const hit = vuelos.find(v => normalizarIdVuelo(v.id) === id);
+        const c = hit != null ? parseInt(hit.capacidad, 10) : NaN;
+        if (Number.isNaN(c) || c < 1) return 128;
+        return Math.min(128, c);
+    } catch (e) {
+        return 128;
+    }
+}
+
+/** Asientos físicos fuera de la capacidad configurada (no se venden en este vuelo). */
+function obtenerSetAsientosFueraDeCapacidad(idVuelo) {
+    const cap = obtenerCapacidadVueloAdmin(idVuelo);
+    const orden = generarOrdenAsientosAvion();
+    if (cap >= orden.length) return new Set();
+    return new Set(orden.slice(cap));
+}
+
+function obtenerBloqueoEmergenciaPorPerfilPasajeros() {
+    const hayPasajerosRestringidosEmergencia = reserva.restricciones && reserva.restricciones.some(r =>
+        r.asistencia !== 'ninguna' || r.intelectual === 'si' || r.oxigeno !== 'no' || r.camilla === 'si' || r.otraCondicion === 'si'
+    );
+    const hayMenores = reserva.conteoCategorias && (reserva.conteoCategorias.ninos > 0 || reserva.conteoCategorias.infantes > 0);
+    if (!hayPasajerosRestringidosEmergencia && !hayMenores) return [];
+    return [...configAvion.salidasEmergencia];
+}
+
+function contarAsientosSeleccionablesVuelo(idVuelo) {
+    const id = normalizarIdVuelo(idVuelo);
+    if (!id) return 0;
+    const permitidosOrden = generarOrdenAsientosAvion();
+    const cap = obtenerCapacidadVueloAdmin(id);
+    const vender = new Set(permitidosOrden.slice(0, Math.min(cap, permitidosOrden.length)));
+    const ocupados = new Set(obtenerAsientosOcupadosParaVuelo(id));
+    const restr = new Set(obtenerAsientosBloqueadosPorRestricciones());
+    const emergExtra = new Set(obtenerBloqueoEmergenciaPorPerfilPasajeros());
+    let n = 0;
+    vender.forEach(s => {
+        if (!ocupados.has(s) && !restr.has(s) && !emergExtra.has(s)) n++;
+    });
+    return n;
 }
 
 const METODOS_PAGO = [
@@ -148,75 +217,75 @@ const horariosRutas = {
 const NOMBRE_DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 const infoDestinos = [
-    { nombre: "Barcelona", codigo: "BLA", pais: "Venezuela", tipo: "nacional",
-      descripcion: "Puerta de entrada al oriente venezolano, con hermosas playas y el imponente complejo turístico El Morro.",
-      imagen: "https://images.unsplash.com/photo-1590523277543-a94eba7c0c8c?w=400&h=250&fit=crop" },
-    { nombre: "Barinas", codigo: "BNS", pais: "Venezuela", tipo: "nacional",
-      descripcion: "Corazón de los llanos venezolanos, ideal para el turismo de naturaleza y la cultura llanera.",
-      imagen: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&h=250&fit=crop" },
-    { nombre: "Barquisimeto", codigo: "BRM", pais: "Venezuela", tipo: "nacional",
-      descripcion: "Capital musical de Venezuela, conocida por su gente cálida, el crepúsculo más hermoso y su rica gastronomía.",
-      imagen: "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=400&h=250&fit=crop" },
-    { nombre: "Canaima", codigo: "CAJ", pais: "Venezuela", tipo: "nacional",
-      descripcion: "Maravilla natural declarada Patrimonio de la Humanidad, hogar del Salto Ángel y los imponentes tepuyes.",
-      imagen: "https://images.unsplash.com/photo-1585664811087-47f65abbad64?w=400&h=250&fit=crop" },
-    { nombre: "Cumaná", codigo: "CUM", pais: "Venezuela", tipo: "nacional",
-      descripcion: "Primera ciudad fundada en tierra firme de América, con un rico legado histórico y hermosas costas.",
-      imagen: "https://images.unsplash.com/photo-1590523277543-a94eba7c0c8c?w=400&h=250&fit=crop" },
-    { nombre: "El Vigía", codigo: "VIG", pais: "Venezuela", tipo: "nacional",
-      descripcion: "Ciudad estratégica del sur del Lago de Maracaibo, puerta de entrada a los Andes venezolanos.",
-      imagen: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&h=250&fit=crop" },
-    { nombre: "La Fría", codigo: "LFR", pais: "Venezuela", tipo: "nacional",
-      descripcion: "Población del estado Táchira con un clima tropical de montaña y cercanía a la frontera colombiana.",
-      imagen: "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=400&h=250&fit=crop" },
-    { nombre: "Las Piedras", codigo: "LSP", pais: "Venezuela", tipo: "nacional",
-      descripcion: "Localidad de la península de Paraguaná, conocida por sus playas y su cercanía a las refinerías.",
-      imagen: "https://images.unsplash.com/photo-1590523277543-a94eba7c0c8c?w=400&h=250&fit=crop" },
+    { nombre: "Miami", codigo: "MIA", pais: "Estados Unidos", tipo: "internacional",
+      descripcion: "Ciudad vibrante de Florida, famosa por sus playas de arena blanca, el icónico Art Decó de South Beach y su vibrante fusión de cultura latina.",
+      imagen: "playaa.webp" },
+    { nombre: "Cancún", codigo: "CUN", pais: "México", tipo: "internacional",
+      descripcion: "Paraíso tropical en el Caribe mexicano, con aguas turquesas, arrecifes de coral, ruinas mayas y una inigualable vida nocturna.",
+      imagen: "cancun.jpeg" },
     { nombre: "Los Roques", codigo: "LRV", pais: "Venezuela", tipo: "nacional",
-      descripcion: "Archipiélago paradisíaco de aguas cristalinas y playas de arena blanca, ideal para el buceo y la navegación.",
-      imagen: "https://images.unsplash.com/photo-1540202404-a2f29016b523?w=400&h=250&fit=crop" },
-    { nombre: "Maracaibo", codigo: "MAR", pais: "Venezuela", tipo: "nacional",
-      descripcion: "Capital del estado Zulia, famosa por el Puente Rafael Urdaneta, el lago y su alegre gaita zuliana.",
-      imagen: "https://images.unsplash.com/photo-1590523277543-a94eba7c0c8c?w=400&h=250&fit=crop" },
-    { nombre: "Maturín", codigo: "MUN", pais: "Venezuela", tipo: "nacional",
-      descripcion: "Capital del estado Monagas, centro neurálgico del oriente venezolano con gran actividad petrolera.",
-      imagen: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&h=250&fit=crop" },
-    { nombre: "Valencia", codigo: "VLN", pais: "Venezuela", tipo: "nacional",
-      descripcion: "Capital del estado Carabobo, ciudad industrial y cultural con una rica historia de batallas independentistas y vibrante vida urbana.",
-      imagen: "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=400&h=250&fit=crop" },
+      descripcion: "Archipiélago paradisíaco de aguas cristalinas turquesas y playas de arena blanca, declarado Parque Nacional. Ideal para el buceo, snorkel y la navegación.",
+      imagen: "playa.avif" },
+    { nombre: "Canaima", codigo: "CAJ", pais: "Venezuela", tipo: "nacional",
+      descripcion: "Maravilla natural declarada Patrimonio de la Humanidad por la UNESCO. Hogar del Salto Ángel, la cascada más alta del mundo, y los imponentes tepuyes.",
+      imagen: "salto angel.jpeg" },
     { nombre: "Caracas", codigo: "CCS", pais: "Venezuela", tipo: "nacional",
       descripcion: "Capital de Venezuela, vibrante metrópolis enclavada entre el Ávila y el mar Caribe, llena de cultura y diversidad.",
-      imagen: "https://images.unsplash.com/photo-1534270804882-6b504792b727?w=400&h=250&fit=crop" },
-    { nombre: "Bridgetown", codigo: "BGI", pais: "Barbados", tipo: "internacional",
-      descripcion: "Capital de Barbados, con playas de ensueño, arquitectura colonial británica y un ambiente caribeño único.",
-      imagen: "https://images.unsplash.com/photo-1540202404-a2f29016b523?w=400&h=250&fit=crop" },
-    { nombre: "Cancún", codigo: "CUN", pais: "México", tipo: "internacional",
-      descripcion: "Paraíso tropical en el Caribe mexicano, famoso por sus playas, ruinas mayas y vida nocturna.",
-      imagen: "https://images.unsplash.com/photo-1510097467424-192d713fd8c8?w=400&h=250&fit=crop" },
-    { nombre: "La Habana", codigo: "HAV", pais: "Cuba", tipo: "internacional",
-      descripcion: "Ciudad llena de historia, colores y música, con su icónico malecón y autos clásicos.",
-      imagen: "https://images.unsplash.com/photo-1590075891024-0da6f6f5a2cf?w=400&h=250&fit=crop" },
-    { nombre: "Managua", codigo: "MGA", pais: "Nicaragua", tipo: "internacional",
-      descripcion: "Capital nicaragüense a orillas del lago Xolotlán, con volcanes imponentes y una rica cultura.",
-      imagen: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&h=250&fit=crop" },
-    { nombre: "Santa Lucía", codigo: "NLU", pais: "México", tipo: "internacional",
-      descripcion: "Moderna terminal aérea en el Estado de México que conecta con la capital y sus alrededores.",
-      imagen: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&h=250&fit=crop" },
-    { nombre: "Buenos Aires", codigo: "EZE", pais: "Argentina", tipo: "internacional",
-      descripcion: "Elegante capital argentina, conocida por su arquitectura europea, el tango y su exquisita gastronomía.",
-      imagen: "https://images.unsplash.com/photo-1589903308904-1010c2294adc?w=400&h=250&fit=crop" },
-    { nombre: "Bogotá", codigo: "BOG", pais: "Colombia", tipo: "internacional",
-      descripcion: "Capital colombiana a 2600 metros de altura, fusión de historia colonial y modernidad vibrante.",
-      imagen: "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=400&h=250&fit=crop" },
+      imagen: "ccs.webp" },
+    { nombre: "Maracaibo", codigo: "MAR", pais: "Venezuela", tipo: "nacional",
+      descripcion: "Capital del estado Zulia, famosa por el Puente Rafael Urdaneta, el lago y su alegre gaita zuliana.",
+      imagen: "maracaibo.jpg" },
+    { nombre: "Barcelona", codigo: "BLA", pais: "Venezuela", tipo: "nacional",
+      descripcion: "Puerta de entrada al oriente venezolano, con hermosas playas y el imponente complejo turístico El Morro.",
+      imagen: "barcelona.webp" },
+    { nombre: "Valencia", codigo: "VLN", pais: "Venezuela", tipo: "nacional",
+      descripcion: "Capital del estado Carabobo, ciudad industrial y cultural con una rica historia de batallas independentistas y vibrante vida urbana.",
+      imagen: "vln.webp" },
+    { nombre: "Barquisimeto", codigo: "BRM", pais: "Venezuela", tipo: "nacional",
+      descripcion: "Capital musical de Venezuela, conocida por su gente cálida, el crepúsculo más hermoso y su rica gastronomía.",
+      imagen: "barquisimeto.jpg" },
+    { nombre: "Barinas", codigo: "BNS", pais: "Venezuela", tipo: "nacional",
+      descripcion: "Corazón de los llanos venezolanos, ideal para el turismo de naturaleza, los hatos y la cultura llanera.",
+      imagen: "barinas.jpg" },
+    { nombre: "Cumaná", codigo: "CUM", pais: "Venezuela", tipo: "nacional",
+      descripcion: "Primera ciudad fundada en tierra firme de América, con un rico legado histórico y hermosas costas.",
+      imagen: "cumana.jpg" },
+    { nombre: "El Vigía", codigo: "VIG", pais: "Venezuela", tipo: "nacional",
+      descripcion: "Ciudad estratégica del sur del Lago de Maracaibo, puerta de entrada a los Andes venezolanos.",
+      imagen: "elvigia.jpg" },
+    { nombre: "La Fría", codigo: "LFR", pais: "Venezuela", tipo: "nacional",
+      descripcion: "Población del estado Táchira con un clima tropical de montaña y cercanía a la frontera colombiana.",
+      imagen: "lafria.jpg" },
+    { nombre: "Las Piedras", codigo: "LSP", pais: "Venezuela", tipo: "nacional",
+      descripcion: "Localidad de la península de Paraguaná, conocida por sus playas y el fascinante paisaje desértico.",
+      imagen: "laspiedras.jpg" },
+    { nombre: "Maturín", codigo: "MUN", pais: "Venezuela", tipo: "nacional",
+      descripcion: "Capital del estado Monagas, centro neurálgico del oriente venezolano con gran actividad petrolera.",
+      imagen: "maturin.jpg" },
     { nombre: "Madrid", codigo: "MAD", pais: "España", tipo: "internacional",
       descripcion: "Capital de España, ciudad cosmopolita con arte, cultura, tapas y una energía que nunca se detiene.",
-      imagen: "https://images.unsplash.com/photo-1543783207-ec64e4d95325?w=400&h=250&fit=crop" },
-    { nombre: "Miami", codigo: "MIA", pais: "Estados Unidos", tipo: "internacional",
-      descripcion: "Ciudad vibrante de Florida, famosa por sus playas, el arte decó y la fusión latina.",
-      imagen: "https://images.unsplash.com/photo-1514214246283-d427a95c5d2f?w=400&h=250&fit=crop" },
+      imagen: "madrid.jpeg" },
+    { nombre: "Buenos Aires", codigo: "EZE", pais: "Argentina", tipo: "internacional",
+      descripcion: "Elegante capital argentina, conocida por su arquitectura europea, el tango y su exquisita gastronomía.",
+      imagen: "buenos aires.jpg" },
+    { nombre: "Bogotá", codigo: "BOG", pais: "Colombia", tipo: "internacional",
+      descripcion: "Capital colombiana a 2600 metros de altura, fusión de historia colonial y modernidad vibrante.",
+      imagen: "bogota.webp" },
+    { nombre: "La Habana", codigo: "HAV", pais: "Cuba", tipo: "internacional",
+      descripcion: "Ciudad llena de historia, colores y música, con su icónico malecón y los famosos autos clásicos.",
+      imagen: "la habana.webp" },
     { nombre: "Ciudad de Panamá", codigo: "PTY", pais: "Panamá", tipo: "internacional",
       descripcion: "Capital panameña que une dos océanos, con un moderno skyline y el histórico Casco Viejo.",
-      imagen: "https://images.unsplash.com/photo-1590523277543-a94eba7c0c8c?w=400&h=250&fit=crop" }
+      imagen: "panama.webp" },
+    { nombre: "Bridgetown", codigo: "BGI", pais: "Barbados", tipo: "internacional",
+      descripcion: "Capital de Barbados, con playas de ensueño, arquitectura colonial británica y un ambiente caribeño único.",
+      imagen: "bridgetown.jpg" },
+    { nombre: "Managua", codigo: "MGA", pais: "Nicaragua", tipo: "internacional",
+      descripcion: "Capital nicaragüense a orillas del lago Xolotlán, con volcanes imponentes y una rica cultura centroamericana.",
+      imagen: "managua.jpg" },
+    { nombre: "Santa Lucía", codigo: "NLU", pais: "México", tipo: "internacional",
+      descripcion: "Moderna terminal aérea en el Estado de México que conecta con la capital y sus alrededores.",
+      imagen: "santalucia.jpg" }
 ];
 
 const CODIGOS_IATA_INTERNACIONAL = new Set(
@@ -300,12 +369,48 @@ function normalizarCiudadItinerario(str) {
     return String(str || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
 }
 
-/** ~30 vuelos en el mes actual, cubriendo la mayoría de orígenes/destinos. */
+/** Versión de datos de itinerario generados: al cambiar, se vuelven a crear vuelos desde plantilla (localStorage). */
+const CANAIMA_ITINERARIO_DATA_VERSION = '2026-05-16-v1';
+
+function migrarPlantillaItinerarioSiNecesario() {
+    try {
+        const k = 'canaimaItinerarioDataVersion';
+        if (localStorage.getItem(k) === CANAIMA_ITINERARIO_DATA_VERSION) return;
+        localStorage.removeItem('vuelosAdmin');
+        localStorage.removeItem('itinerarioSync');
+        localStorage.removeItem('asientosPorVuelo');
+        localStorage.removeItem('asientosOcupados');
+        localStorage.setItem(k, CANAIMA_ITINERARIO_DATA_VERSION);
+    } catch (e) { /* ignore */ }
+}
+
+/** Itinerario: desde el 16 de mayo (año actual) o desde hoy si ya pasó esa fecha. */
+function primeraFechaItinerario() {
+    const hoy = new Date();
+    const may16 = new Date(hoy.getFullYear(), 4, 16);
+    const hoySolo = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    return hoySolo < may16 ? may16 : hoySolo;
+}
+
+function fechaLocalDesdeDate(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Alinea una fecha candidata al calendario de reservas: primer día hacia adelante donde opera el destino. */
+function siguienteFechaValidaParaDestino(destino, desde) {
+    const diasPerm = horariosRutas[destino];
+    const cur = new Date(desde.getFullYear(), desde.getMonth(), desde.getDate());
+    if (!diasPerm || diasPerm.length === 0) return cur;
+    for (let k = 0; k < 800; k++) {
+        if (diasPerm.includes(cur.getDay())) return cur;
+        cur.setDate(cur.getDate() + 1);
+    }
+    return cur;
+}
+
+/** ~30 vuelos; fechas >= 16 de mayo (o hoy) y día de la semana coherente con horariosRutas del destino. */
 function generarVuelosMesInicial() {
-    const ahora = new Date();
-    const y = ahora.getFullYear();
-    const m = ahora.getMonth();
-    const ultimo = new Date(y, m + 1, 0).getDate();
+    const base = primeraFechaItinerario();
     const CCS = 'Caracas (CCS)';
     const rutas = [
         [CCS, 'Madrid (MAD)'], [CCS, 'Miami (MIA)'], [CCS, 'Bogotá (BOG)'], [CCS, 'Buenos Aires (EZE)'],
@@ -324,9 +429,11 @@ function generarVuelosMesInicial() {
     const vuelos = [];
     let num = 501;
     for (let i = 0; i < 30; i++) {
-        const dia = 1 + ((i * 2) % ultimo);
-        const fecha = `${y}-${String(m + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
         const [o, d] = rutas[i % rutas.length];
+        const candidato = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+        candidato.setDate(candidato.getDate() + i);
+        const fechaAjustada = siguienteFechaValidaParaDestino(d, candidato);
+        const fecha = fechaLocalDesdeDate(fechaAjustada);
         vuelos.push({
             id: `AV${num}`,
             origen: o,
@@ -372,6 +479,55 @@ function persistirVuelosInicialesSiVacios(listaAdmin) {
     localStorage.setItem('itinerarioSync', JSON.stringify(sync));
 }
 
+/** Ajusta la fecha de un vuelo al calendario de reservas (mín. itinerario + día operativo del destino). */
+function ajustarFechaVueloSegunDestino(v) {
+    const out = { ...v };
+    if (!out.destino || !out.fecha) return out;
+    const partes = String(out.fecha).split('-');
+    if (partes.length !== 3) return out;
+    const y = parseInt(partes[0], 10);
+    const mo = parseInt(partes[1], 10) - 1;
+    const d = parseInt(partes[2], 10);
+    if (Number.isNaN(y) || Number.isNaN(mo) || Number.isNaN(d)) return out;
+    let cur = new Date(y, mo, d);
+    const minD = primeraFechaItinerario();
+    if (cur < minD) cur = new Date(minD.getFullYear(), minD.getMonth(), minD.getDate());
+    if (horariosRutas[out.destino]) {
+        const ajustada = siguienteFechaValidaParaDestino(out.destino, cur);
+        out.fecha = fechaLocalDesdeDate(ajustada);
+    }
+    return out;
+}
+
+/** Escribe en localStorage fechas que cumplan horariosRutas y fecha mínima (admin e itinerario alineados). */
+function sincronizarFechasVuelosEnStorage() {
+    try {
+        const raw = localStorage.getItem('vuelosAdmin');
+        if (!raw) return;
+        const list = JSON.parse(raw);
+        if (!Array.isArray(list) || !list.length) return;
+        let cambio = false;
+        const next = list.map(v => {
+            const adj = ajustarFechaVueloSegunDestino(v);
+            if (adj.fecha !== v.fecha) cambio = true;
+            return { ...v, fecha: adj.fecha };
+        });
+        if (cambio) {
+            localStorage.setItem('vuelosAdmin', JSON.stringify(next));
+            const itinerario = next.map(v => ({
+                id: v.id,
+                nro: v.id,
+                origen: v.origen,
+                destino: v.destino,
+                salida: v.salida,
+                fecha: v.fecha,
+                estado: v.estado
+            }));
+            localStorage.setItem('itinerarioSync', JSON.stringify(itinerario));
+        }
+    } catch (e) { /* ignore */ }
+}
+
 function obtenerVuelosItinerario() {
     const adminRaw = localStorage.getItem('vuelosAdmin');
     const syncRaw = localStorage.getItem('itinerarioSync');
@@ -411,7 +567,7 @@ function obtenerVuelosItinerario() {
             estado: v.estado
         }));
     }
-    return vuelos;
+    return vuelos.map(v => ajustarFechaVueloSegunDestino(v));
 }
 
 function estadoVueloPermiteReserva(estado) {
@@ -464,7 +620,7 @@ function inicializarDstShowcase() {
     thumbsEl.innerHTML = infoDestinos.map((d, i) => `
         <div class="dst-thumb ${i === 0 ? 'active' : ''}" id="dstthumb-${i}" onclick="activarDst(${i})">
             <img src="${d.imagen}" alt="${d.nombre}" loading="lazy">
-            <div class="dst-thumb-label">${d.pais.toUpperCase()}</div>
+            <div class="dst-thumb-label">${d.nombre.toUpperCase()}</div>
         </div>
     `).join('');
 
@@ -516,6 +672,16 @@ function toggleCalendario(id) {
     document.querySelectorAll('.calendario-popup').forEach(p => p.classList.remove('show'));
     if (!isOpen) {
         popup.classList.add('show');
+        const input = document.getElementById(`fecha-${id}`);
+        const val = (input && input.value || '').trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+            const [y, m] = val.split('-').map(Number);
+            popup.dataset.mes = String(m - 1);
+            popup.dataset.año = String(y);
+        } else {
+            delete popup.dataset.mes;
+            delete popup.dataset.año;
+        }
         renderizarCalendario(id);
     }
 }
@@ -524,35 +690,84 @@ function cerrarCalendarios() {
     document.querySelectorAll('.calendario-popup').forEach(p => p.classList.remove('show'));
 }
 
+function calAplicarMesYAnio(id, ev) {
+    if (ev) ev.stopPropagation();
+    const popup = document.getElementById(`cal-${id}`);
+    if (!popup) return;
+    const sm = popup.querySelector('.cal-sel-mes');
+    const sa = popup.querySelector('.cal-sel-anio');
+    if (!sm || !sa) return;
+    let mes = parseInt(sm.value, 10);
+    let año = parseInt(sa.value, 10);
+    const hoy = new Date();
+    const minMes = hoy.getMonth();
+    const minAño = hoy.getFullYear();
+    if (año < minAño || (año === minAño && mes < minMes)) {
+        mes = minMes;
+        año = minAño;
+        sm.value = String(mes);
+        sa.value = String(año);
+    }
+    popup.dataset.mes = String(mes);
+    popup.dataset.año = String(año);
+    renderizarCalendario(id);
+}
+
 function renderizarCalendario(id) {
     const popup = document.getElementById(`cal-${id}`);
     const input = document.getElementById(`fecha-${id}`);
-    const destino = document.getElementById('destino-select').value;
+    const destino = document.getElementById('destino-select')?.value || '';
+    const origen = document.getElementById('origen')?.value || '';
+    const ciudadRegla = id === 'vuelta' ? origen : destino;
 
-    let mes = parseInt(popup.dataset.mes);
-    let año = parseInt(popup.dataset.año);
+    let mes = parseInt(popup.dataset.mes, 10);
+    let año = parseInt(popup.dataset.año, 10);
     if (isNaN(mes) || isNaN(año)) {
         const hoy = new Date();
         mes = hoy.getMonth();
         año = hoy.getFullYear();
-        popup.dataset.mes = mes;
-        popup.dataset.año = año;
+        popup.dataset.mes = String(mes);
+        popup.dataset.año = String(año);
     }
 
     const primerDia = new Date(año, mes, 1).getDay();
     const diasEnMes = new Date(año, mes + 1, 0).getDate();
-    const hoyStr = new Date().toISOString().split('T')[0];
-    const diasDisponibles = destino ? horariosRutas[destino] : null;
+    const hoyStr = fechaLocalISO();
+    const diasDisponibles = ciudadRegla ? horariosRutas[ciudadRegla] : null;
     const fechaActualStr = input.value;
+    const fechaIdaVal = (document.getElementById('fecha-ida')?.value || '').trim();
 
     const nombreMeses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
+    const hoy = new Date();
+    const minMes = hoy.getMonth();
+    const minAño = hoy.getFullYear();
+    const enPrimerMesPermitido = año === minAño && mes === minMes;
+    const prevAttr = enPrimerMesPermitido
+        ? ' disabled class="cal-nav cal-nav-disabled"'
+        : ' class="cal-nav" onclick="event.stopPropagation(); navegarMes(\'' + id + '\', -1)"';
+
+    let optsAnio = '';
+    const yMax = minAño + 6;
+    for (let yy = minAño; yy <= yMax; yy++) {
+        optsAnio += `<option value="${yy}"${yy === año ? ' selected' : ''}>${yy}</option>`;
+    }
+    const optsMes = nombreMeses.map((nm, i) =>
+        `<option value="${i}"${i === mes ? ' selected' : ''}>${nm}</option>`
+    ).join('');
+
     let html = `
-        <div class="cal-header">
-            <button class="cal-nav" onclick="event.stopPropagation(); navegarMes('${id}', -1)">‹</button>
-            <span class="cal-titulo">${nombreMeses[mes]} ${año}</span>
-            <button class="cal-nav" onclick="event.stopPropagation(); navegarMes('${id}', 1)">›</button>
+        <div class="cal-header cal-header-extended">
+            <button type="button"${prevAttr} aria-label="Mes anterior">‹</button>
+            <label class="cal-sel-label"><span class="cal-sel-caption">Mes</span>
+                <select class="cal-sel-mes" title="Mes" aria-label="Seleccionar mes" onchange="calAplicarMesYAnio('${id}', event)">${optsMes}</select>
+            </label>
+            <label class="cal-sel-label"><span class="cal-sel-caption">Año</span>
+                <select class="cal-sel-anio" title="Año" aria-label="Seleccionar año" onchange="calAplicarMesYAnio('${id}', event)">${optsAnio}</select>
+            </label>
+            <button type="button" class="cal-nav" onclick="event.stopPropagation(); navegarMes('${id}', 1)" aria-label="Mes siguiente">›</button>
         </div>
+        <div class="cal-titulo-aux" aria-hidden="true">${nombreMeses[mes]} ${año}</div>
         <table class="cal-grid">
             <thead><tr><th>Do</th><th>Lu</th><th>Ma</th><th>Mi</th><th>Ju</th><th>Vi</th><th>Sá</th></tr></thead>
             <tbody>`;
@@ -571,6 +786,7 @@ function renderizarCalendario(id) {
                 const diaSemana = new Date(año, mes, dia).getDay();
                 const esPasado = diaStr < hoyStr;
                 const tieneVuelo = !diasDisponibles || diasDisponibles.includes(diaSemana);
+                const esAntesIda = id === 'vuelta' && fechaIdaVal && diaStr < fechaIdaVal;
                 const esSeleccionado = diaStr === fechaActualStr;
 
                 let clases = 'cal-dia';
@@ -578,13 +794,15 @@ function renderizarCalendario(id) {
                     clases += ' cal-dia-disabled';
                 } else if (!tieneVuelo) {
                     clases += ' cal-dia-sin-vuelo';
+                } else if (esAntesIda) {
+                    clases += ' cal-dia-sin-vuelo';
                 }
                 if (esSeleccionado) clases += ' cal-dia-seleccionado';
 
-                const esClickable = !esPasado && tieneVuelo;
+                const esClickable = !esPasado && tieneVuelo && !esAntesIda;
                 const onclick = esClickable ? `seleccionarDia('${id}','${diaStr}')` : '';
 
-                html += `<td><button class="${clases}" onclick="event.stopPropagation(); ${onclick}" ${onclick ? '' : 'disabled'}>${dia}</button></td>`;
+                html += `<td><button type="button" class="${clases}" onclick="event.stopPropagation(); ${onclick}" ${onclick ? '' : 'disabled'}>${dia}</button></td>`;
                 dia++;
             }
         }
@@ -602,12 +820,18 @@ function renderizarCalendario(id) {
 
 function navegarMes(id, delta) {
     const popup = document.getElementById(`cal-${id}`);
-    let mes = parseInt(popup.dataset.mes) + delta;
-    let año = parseInt(popup.dataset.año);
+    let mes = parseInt(popup.dataset.mes, 10) + delta;
+    let año = parseInt(popup.dataset.año, 10);
     if (mes < 0) { mes = 11; año--; }
     if (mes > 11) { mes = 0; año++; }
-    popup.dataset.mes = mes;
-    popup.dataset.año = año;
+    if (delta < 0) {
+        const hoy = new Date();
+        const minMes = hoy.getMonth();
+        const minAño = hoy.getFullYear();
+        if (año < minAño || (año === minAño && mes < minMes)) return;
+    }
+    popup.dataset.mes = String(mes);
+    popup.dataset.año = String(año);
     renderizarCalendario(id);
 }
 
@@ -807,7 +1031,25 @@ function procesarBusqueda() {
 
     const vueloItin = encontrarVueloItinerario(origenInput, destinoSelect, fechaIda);
     if (!vueloItin) {
-        if (fechaIda) {
+        // Verificar si existe pero está cancelado
+        const todosFiltrados = (() => {
+            try {
+                const raw = localStorage.getItem('vuelosAdmin');
+                if (!raw) return null;
+                const vuelos = JSON.parse(raw);
+                const oNorm = normalizarCiudadItinerario(origenInput);
+                const dNorm = normalizarCiudadItinerario(destinoSelect);
+                return vuelos.find(v =>
+                    normalizarCiudadItinerario(v.origen) === oNorm &&
+                    normalizarCiudadItinerario(v.destino) === dNorm &&
+                    v.fecha === fechaIda &&
+                    !estadoVueloPermiteReserva(v.estado)
+                );
+            } catch(e) { return null; }
+        })();
+        if (todosFiltrados) {
+            alert(`❌ El vuelo ${todosFiltrados.id || ''} de esta ruta en la fecha seleccionada está ${todosFiltrados.estado.toLowerCase()} y no acepta reservas. Por favor elige otra fecha.`);
+        } else if (fechaIda) {
             alert("✈️ El vuelo no está disponible: no hay una salida en el itinerario para esa ruta en la fecha de ida elegida. Revise el itinerario o cambie la fecha.");
         } else {
             alert("✈️ El vuelo no está disponible: esa ruta no figura en el itinerario con estado operativo, o no hay coincidencia. Consulte Itinerario para rutas y fechas registradas.");
@@ -817,6 +1059,23 @@ function procesarBusqueda() {
     if (esIdaYVuelta && !fechaVuelta) {
         alert("Seleccione la fecha de vuelta para viaje ida y vuelta.");
         return;
+    }
+    if (esIdaYVuelta && fechaVuelta && fechaVuelta < fechaIda) {
+        alert("La fecha de vuelta no puede ser anterior a la fecha de ida.");
+        return;
+    }
+
+    const idVueloBusq = normalizarIdVuelo(vueloItin.nro || vueloItin.id);
+    const capBusq = obtenerCapacidadVueloAdmin(idVueloBusq);
+    if (capBusq < total) {
+        alert(`Este vuelo solo tiene ${capBusq} asiento(s) a la venta y usted indicó ${total} pasajero(s). Reduzca pasajeros o elija otro vuelo.`);
+        return;
+    }
+
+    const mapAsientos = leerMapaAsientosPorVuelo();
+    if (idVueloBusq && mapAsientos[idVueloBusq]) {
+        delete mapAsientos[idVueloBusq];
+        guardarMapaAsientosPorVuelo(mapAsientos);
     }
 
     reserva.origen = origenInput;
@@ -985,10 +1244,15 @@ function confirmarRestricciones() {
     }
 
     const idVuelo = normalizarIdVuelo(reserva.vueloItinerario?.nro);
-    const asientosOcupados = obtenerAsientosOcupadosParaVuelo(idVuelo);
-    const asientosRestringidos = obtenerAsientosBloqueadosPorRestricciones();
-    const totalAsientos = 128;
-    const disponibles = totalAsientos - new Set([...asientosOcupados, ...asientosRestringidos]).size;
+    const disponibles = contarAsientosSeleccionablesVuelo(idVuelo);
+    const capV = obtenerCapacidadVueloAdmin(idVuelo);
+
+    if (capV < reserva.cantidadBoletos) {
+        alert(`La capacidad de venta de este vuelo es de ${capV} asiento(s), pero su reserva requiere ${reserva.cantidadBoletos} pasajero(s). Reduzca pasajeros o elija otro vuelo.`);
+        reserva.restricciones = [];
+        mostrarPaso(1);
+        return;
+    }
 
     if (disponibles < reserva.cantidadBoletos) {
         alert("Lo sentimos, según las restricciones informadas no podemos garantizar asientos adecuados y seguros para todos los pasajeros. Por seguridad, no podemos procesar su reserva. Consulte con nuestra línea de atención al cliente para opciones personalizadas.");
@@ -999,6 +1263,18 @@ function confirmarRestricciones() {
 
     renderizarMapaAsientos();
     mostrarPaso(4);
+}
+
+function verificarVueloNoCancelado(nro) {
+    if (!nro) return true;
+    try {
+        const raw = localStorage.getItem('vuelosAdmin');
+        if (!raw) return true;
+        const vuelos = JSON.parse(raw);
+        const vuelo = vuelos.find(v => normalizarIdVuelo(v.id || v.nro) === normalizarIdVuelo(nro));
+        if (!vuelo) return true;
+        return estadoVueloPermiteReserva(vuelo.estado);
+    } catch (e) { return true; }
 }
 
 function obtenerAsientosBloqueadosPorRestricciones() {
@@ -1038,15 +1314,33 @@ function obtenerAsientosBloqueadosPorRestricciones() {
 function renderizarMapaAsientos() {
     const contenedor = document.getElementById('mapa-avion-container');
     contenedor.innerHTML = "";
+    reserva.asientos = [];
     const idVuelo = normalizarIdVuelo(reserva.vueloItinerario?.nro);
+
+    // Verificar en tiempo real que el vuelo no esté cancelado
+    if (!verificarVueloNoCancelado(idVuelo)) {
+        const aviso = document.createElement('div');
+        aviso.style.cssText = 'text-align:center;padding:40px 20px;';
+        aviso.innerHTML = `
+            <div style="font-size:48px;margin-bottom:16px">🚫</div>
+            <h3 style="color:#991b1b;font-size:20px;margin:0 0 10px">Vuelo Cancelado</h3>
+            <p style="color:#64748b;font-size:14px;margin:0 0 24px">El vuelo <strong>${idVuelo}</strong> ha sido cancelado y no está disponible para reservas.</p>
+            <button onclick="mostrarPaso(1)" style="background:#0052cc;color:white;border:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">← Volver al inicio</button>
+        `;
+        contenedor.appendChild(aviso);
+        return;
+    }
+
+    const capMostrar = obtenerCapacidadVueloAdmin(idVuelo);
     const infoVuelo = document.createElement('p');
     infoVuelo.className = 'mapa-vuelo-info';
     infoVuelo.style.cssText = 'text-align:center;margin-bottom:14px;font-size:15px;color:#0d2d6e;font-weight:600;';
     infoVuelo.textContent = idVuelo
-        ? `Vuelo ${idVuelo} — Cada vuelo tiene su propio mapa de asientos.`
+        ? `Vuelo ${idVuelo} — Asientos a la venta en este vuelo: ${capMostrar}. El resto del avión no está disponible.`
         : 'Selección de asientos';
     contenedor.appendChild(infoVuelo);
 
+    const fueraCapacidad = obtenerSetAsientosFueraDeCapacidad(idVuelo);
     const asientosOcupadosGlobal = obtenerAsientosOcupadosParaVuelo(idVuelo);
     const asientosRestringidos = obtenerAsientosBloqueadosPorRestricciones();
     const todosOcupados = [...new Set([...asientosOcupadosGlobal, ...asientosRestringidos])];
@@ -1151,8 +1445,13 @@ function renderizarMapaAsientos() {
             btn.innerText = id;
             const esEmergencia = configAvion.salidasEmergencia.includes(id);
             const esBloqueadoPorRestriccion = bloquearEmergenciaExtra && esEmergencia;
+            const esFueraCapacidad = fueraCapacidad.has(id);
 
-            if (todosOcupados.includes(id)) {
+            if (esFueraCapacidad) {
+                btn.className = `asiento fuera-capacidad${esClub ? ' asiento-club' : ''}`;
+                btn.disabled = true;
+                btn.title = 'No disponible: fuera de la capacidad de venta de este vuelo';
+            } else if (todosOcupados.includes(id)) {
                 btn.className = `asiento ocupado${esClub ? ' asiento-club' : ''}`;
                 btn.disabled = true;
                 btn.title = 'Asiento ocupado';
@@ -1182,10 +1481,11 @@ function renderizarMapaAsientos() {
     leyenda.className = 'leyenda-asientos';
     leyenda.innerHTML = `
         <div class="leyenda-item"><span class="leyenda-box disponible"></span> Disponible</div>
-        <div class="leyenda-item"><span class="leyenda-box seleccionado"></span> Seleccionado</div>
         <div class="leyenda-item"><span class="leyenda-box ocupado"></span> Ocupado</div>
-        <div class="leyenda-item"><span class="leyenda-box emergencia"></span> Salida emergencia</div>
-        <div class="leyenda-item"><span class="leyenda-box emergencia-bloqueado"></span> Bloqueado</div>
+        <div class="leyenda-item"><span class="leyenda-box seleccionado"></span> Tu Selección</div>
+        <div class="leyenda-item"><span class="leyenda-box fuera-capacidad"></span> Fuera de capacidad</div>
+        <div class="leyenda-item"><span class="leyenda-box emergencia"></span> Salida de emergencia</div>
+        <div class="leyenda-item"><span class="leyenda-box emergencia-bloqueado"></span> Emergencia (restringido)</div>
     `;
     contenedor.appendChild(leyenda);
 
@@ -1257,6 +1557,14 @@ function finalizarReserva() {
         alert("Debe seleccionar todos los asientos."); return;
     }
 
+    // Verificar en tiempo real que el vuelo no esté cancelado
+    const nroVuelo = normalizarIdVuelo(reserva.vueloItinerario?.nro);
+    if (!verificarVueloNoCancelado(nroVuelo)) {
+        alert("❌ Este vuelo ha sido cancelado y no es posible completar la reserva. Por favor regrese al inicio y busque otra fecha o ruta disponible.");
+        mostrarPaso(1);
+        return;
+    }
+
     const selPago = document.querySelector('input[name="metodo-pago-reserva"]:checked');
     if (!selPago) { alert("Seleccione un método de pago (Zelle, Pago Móvil o Binance)."); return; }
     reserva.metodoPago = selPago.value;
@@ -1284,6 +1592,11 @@ function finalizarReserva() {
     const idV = normalizarIdVuelo(vInfo.nro);
     if (!idV) {
         alert('Error interno: no se identificó el vuelo. Vuelva a buscar su vuelo.');
+        return;
+    }
+    const fueraCapFin = obtenerSetAsientosFueraDeCapacidad(idV);
+    if (reserva.asientos.some(a => fueraCapFin.has(a))) {
+        alert('Hay asientos inválidos para la capacidad de este vuelo. Vuelva a la selección de asientos.');
         return;
     }
     agregarAsientosOcupadosVuelo(idV, reserva.asientos);
@@ -1513,6 +1826,8 @@ function formatearHora12Admin(hora) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    migrarPlantillaItinerarioSiNecesario();
+    sincronizarFechasVuelosEnStorage();
     // Siempre arrancar en la vista inicial (hero + paso 1) al cargar/recargar
     mostrarPaso(1);
 
@@ -1724,5 +2039,28 @@ function mostrarMsgCheckin(texto, tipo) {
     msg.className = 'checkin-mensaje ' + tipo;
 }
 
+// --- FAQ ACORDEÓN ---
+function toggleFaq(btn) {
+    const item = btn.closest('.faq-item');
+    const respuesta = item.querySelector('.faq-respuesta');
+    const isAbierta = btn.classList.contains('abierta');
+
+    // Cerrar todas las abiertas en la misma categoría
+    const categoria = btn.closest('.faq-categoria');
+    categoria.querySelectorAll('.faq-pregunta.abierta').forEach(b => {
+        b.classList.remove('abierta');
+        b.closest('.faq-item').querySelector('.faq-respuesta').classList.remove('visible');
+    });
+
+    if (!isAbierta) {
+        btn.classList.add('abierta');
+        respuesta.classList.add('visible');
+    }
+}
+
 // Ejecutar la verificación al cargar la página
 window.addEventListener('load', verificarRuta);
+
+
+
+

@@ -423,6 +423,27 @@ function guardarFormVuelo(esNuevo, idOriginal) {
     if (!/^[A-Z]{1,3}\d{1,4}$/.test(id)) {
         return mostrarError('⚠️ Formato de vuelo inválido. Ej: AV501');
     }
+    if (cap < 1 || cap > 128) {
+        return mostrarError('⚠️ La capacidad de asientos debe estar entre 1 y 128.');
+    }
+    if (typeof horariosRutas !== 'undefined' && horariosRutas[destino]) {
+        const partes = fecha.split('-');
+        if (partes.length === 3) {
+            const y = parseInt(partes[0], 10);
+            const mo = parseInt(partes[1], 10) - 1;
+            const d = parseInt(partes[2], 10);
+            if (Number.isNaN(y) || Number.isNaN(mo) || Number.isNaN(d)) {
+                return mostrarError('⚠️ Fecha inválida.');
+            }
+            const wd = new Date(y, mo, d).getDay();
+            const diasPerm = horariosRutas[destino];
+            if (!diasPerm.includes(wd)) {
+                const nom = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                const lista = diasPerm.map(i => nom[i]).join(', ');
+                return mostrarError(`⚠️ Para ${destino} solo operan vuelos los: ${lista}. Elija otra fecha.`);
+            }
+        }
+    }
 
     const vuelos = cargarVuelos();
 
@@ -832,9 +853,11 @@ function renderTabStats() {
                         <circle cx="60" cy="60" r="50" fill="none" stroke="#e2e8f0" stroke-width="14"/>
                         <circle cx="60" cy="60" r="50" fill="none" stroke="#0052cc" stroke-width="14"
                             stroke-dasharray="${3.14159*100*porcOcupacion/100} ${3.14159*100*(1-porcOcupacion/100)}"
-                            stroke-dashoffset="${3.14159*25}" stroke-linecap="round"/>
-                        <text x="60" y="58" text-anchor="middle" font-size="20" font-weight="800" fill="#172b4d">${porcOcupacion}%</text>
-                        <text x="60" y="73" text-anchor="middle" font-size="9" fill="#8fa8d4">ocupados</text>
+                            stroke-linecap="round"/>
+                        <g transform="rotate(90, 60, 60)">
+                            <text x="60" y="56" text-anchor="middle" font-size="20" font-weight="800" fill="#172b4d">${porcOcupacion}%</text>
+                            <text x="60" y="71" text-anchor="middle" font-size="9" fill="#8fa8d4">ocupados</text>
+                        </g>
                     </svg>
                 </div>
                 <p class="adm-donut-sub">${totalAsientosReservados} asientos vendidos · ${capacidadTotal} plazas totales (${vuelos.length} vuelos × 128)</p>

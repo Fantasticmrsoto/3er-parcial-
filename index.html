@@ -34,9 +34,9 @@
     <div id="app">
         <div id="contenedor-reserva-visual" class="hero-wrapper">
             <div class="hero-slider">
-                <div class="slide" style="background-image: url('los\ roques.jpg')"></div>
-                <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1512753360424-747040409944?q=80&w=2070')"></div>
-                <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1518105779142-d975f22f1b0a?q=80&w=2070')"></div>
+                <div class="slide" style="background-image: url('playa.avif')"></div>
+                <div class="slide" style="background-image: url('madrid.jpeg')"></div>
+                <div class="slide" style="background-image: url('cancun.jpeg')"></div>
             </div>
 
             <section id="paso1" class="search-container">
@@ -158,6 +158,7 @@
                 <div class="item-leyenda"><span class="box disponible"></span> Disponible</div>
                 <div class="item-leyenda"><span class="box ocupado"></span> Ocupado</div>
                 <div class="item-leyenda"><span class="box seleccionado"></span> Tu Selección</div>
+                <div class="item-leyenda"><span class="box fuera-capacidad"></span> Fuera de capacidad</div>
                 <div class="item-leyenda"><span class="box emergencia"></span> Salida de Emergencia</div>
                 <div class="item-leyenda"><span class="box emergencia-bloqueado"></span> Emergencia (restringido)</div>
             </div>
@@ -178,17 +179,265 @@
             <div id="tabla-vuelos"></div>
         </section>
 
-        <section id="seccion-faq" class="hidden content-card">
-            <h2>Preguntas Frecuentes</h2>
-            <div class="faq-container">
-                <div class="faq-item">
-                    <h3>¿Cómo recibo mi boleto?</h3>
-                    <p>Al finalizar la reserva, el sistema generará un archivo JSON con todos tus datos.</p>
+        <section id="seccion-faq" class="hidden faq-section">
+            <div class="faq-hero">
+                <div class="faq-hero-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 </div>
-                <div class="faq-item">
-                    <h3>¿Puedo llevar mascotas?</h3>
-                    <p>Sí, debe marcar la asistencia especial en el formulario de pasajeros.</p>
+                <h2 class="faq-titulo">Preguntas Frecuentes</h2>
+                <p class="faq-subtitulo">Todo lo que necesitas saber antes de volar con Canaima Airlines</p>
+            </div>
+
+            <div class="faq-grid">
+
+                <!-- RESERVAS -->
+                <div class="faq-categoria">
+                    <div class="faq-cat-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Reservas y Boletos
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Cómo realizo una reserva?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Selecciona tu origen y destino, elige las fechas de viaje, indica la cantidad de pasajeros y haz clic en <strong>Buscar vuelos</strong>. Luego completa los datos de cada pasajero, elige tus asientos y realiza el pago. Al finalizar recibirás un código de reserva único.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Con cuánta anticipación debo reservar?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Recomendamos reservar con al menos <strong>72 horas de anticipación</strong> para vuelos nacionales y <strong>7 días</strong> para vuelos internacionales. Para destinos de alta demanda como Los Roques o Canaima, te sugerimos hacerlo con 2 semanas de antelación.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Cómo recibo mi boleto o confirmación?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Al completar tu reserva, el sistema genera un <strong>código de reserva</strong> (ej: RES-1234567890). Guarda ese código: lo necesitarás para hacer el Web Check-In o consultar tu reserva. Puedes usarlo en la sección <em>Web Check-In</em> del sitio en cualquier momento.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Puedo modificar o cancelar mi reserva?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Sí. Ingresa tu código de reserva y nombre en la sección <strong>Web Check-In</strong> para confirmar o cancelar. Las cancelaciones liberan los asientos automáticamente. Para cambios de fecha o ruta, comunícate con nuestro equipo de atención al cliente.</p>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- EQUIPAJE -->
+                <div class="faq-categoria">
+                    <div class="faq-cat-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+                        Equipaje
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Cuánto equipaje puedo llevar?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>La franquicia de equipaje varía según la clase y ruta:</p>
+                            <ul>
+                                <li><strong>Clase Turista – Nacional:</strong> 1 maleta de 23 kg + 1 equipaje de mano de 8 kg.</li>
+                                <li><strong>Clase Turista – Internacional:</strong> 2 maletas de 23 kg + 1 equipaje de mano de 10 kg.</li>
+                                <li><strong>Club Económico:</strong> +10 kg adicionales en bodega en todas las rutas.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Qué artículos están prohibidos en cabina?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Están prohibidos líquidos mayores de 100 ml no declarados, objetos cortopunzantes, baterías de litio sueltas mayores de 100 Wh, y cualquier artículo clasificado como material peligroso según la normativa IATA. Los líquidos permitidos deben ir en bolsa plástica transparente resellable de 1 litro.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Puedo llevar instrumentos musicales?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Los instrumentos pequeños (guitarra, violín) pueden ir en cabina como equipaje de mano si caben en el compartimento superior, sujeto a disponibilidad. Instrumentos de mayor tamaño deben viajar como equipaje especial en bodega con embalaje adecuado. Consulta con antelación para garantizar espacio.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHECK-IN -->
+                <div class="faq-categoria">
+                    <div class="faq-cat-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                        Check-In y Embarque
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Cómo hago el Web Check-In?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Haz clic en el botón <strong>🖥 Web Check-In</strong> de la página principal, ingresa tu código de reserva y tu nombre completo tal como aparece en el boleto, y confirma. El proceso está disponible hasta <strong>2 horas antes</strong> del vuelo.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Con cuánto tiempo debo llegar al aeropuerto?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Te recomendamos llegar con <strong>2 horas de anticipación</strong> para vuelos nacionales y <strong>3 horas</strong> para vuelos internacionales. El cierre de puertas se realiza 20 minutos antes de la hora de salida programada.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Puedo elegir mi asiento?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Sí. Durante el proceso de reserva podrás seleccionar tu asiento en el mapa de cabina interactivo. Los asientos de <strong>Club Económico</strong> (filas 1–2) ofrecen mayor espacio y prioridad de embarque. Los asientos de salida de emergencia tienen restricciones para menores, infantes y pasajeros con necesidades especiales.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PASAJEROS ESPECIALES -->
+                <div class="faq-categoria">
+                    <div class="faq-cat-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        Pasajeros Especiales
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Viajan infantes sin pagar boleto?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Los <strong>infantes de 0 a 2 años</strong> viajan en el regazo del adulto acompañante y tienen una tarifa reducida. No tienen derecho a asiento propio ni franquicia de equipaje. Solo se admite un infante por adulto acompañante. Al cumplir 2 años deben adquirir boleto de niño.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Los mayores de 60 años tienen tarifa especial?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Sí. Los pasajeros clasificados como <strong>Mayores (60+ años)</strong> cuentan con tarifas preferenciales en todas nuestras rutas. Al reservar, selecciona la categoría "Mayores" en el selector de pasajeros para que el descuento se aplique automáticamente.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Qué asistencias especiales ofrecen?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Canaima Airlines ofrece asistencia para pasajeros con movilidad reducida (silla de ruedas, camilla), pasajeros que requieren oxígeno a bordo, y personas con discapacidad intelectual o visual. Estas necesidades deben declararse durante el proceso de reserva en el formulario de restricciones médicas para garantizar la atención adecuada.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PAGOS -->
+                <div class="faq-categoria">
+                    <div class="faq-cat-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                        Pagos y Tarifas
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Qué métodos de pago aceptan?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Actualmente aceptamos tres métodos de pago:</p>
+                            <ul>
+                                <li><strong>Zelle</strong> – Transferencia directa en dólares (USD).</li>
+                                <li><strong>Pago Móvil</strong> – En bolívares (Bs.), con datos enviados por correo o SMS.</li>
+                                <li><strong>Binance Pay</strong> – Pago en criptomonedas según instrucciones al confirmar.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Las tarifas incluyen impuestos?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Las tarifas mostradas en el proceso de reserva son <strong>por pasajero</strong> e incluyen tasas aeroportuarias nacionales. Para vuelos internacionales, pueden aplicar tasas de salida adicionales según el país de destino, las cuales se detallan antes de confirmar el pago.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Cuál es la diferencia entre Club Económico y Clase Turista?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p><strong>Club Económico</strong> (filas 1–2) ofrece mayor espacio entre asientos, embarque prioritario, franquicia de equipaje adicional y servicio preferencial a bordo, a una tarifa ligeramente inferior a la Clase Turista estándar. <strong>Clase Turista</strong> ofrece comodidad estándar con excelente relación calidad-precio en todas las rutas.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RUTAS Y VUELOS -->
+                <div class="faq-categoria">
+                    <div class="faq-cat-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>
+                        Rutas y Vuelos
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿A qué destinos opera Canaima Airlines?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Operamos vuelos nacionales a <strong>13 destinos</strong> en Venezuela (incluyendo Los Roques, Canaima, Caracas, Maracaibo, Barcelona, Valencia y más) e internacionales a <strong>9 destinos</strong> (Miami, Cancún, Madrid, Buenos Aires, Bogotá, Ciudad de Panamá, La Habana, Bridgetown y Managua). Consulta el <strong>Itinerario</strong> para ver días y horarios exactos.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Por qué algunos días no están disponibles en el calendario?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>Cada ruta opera en días específicos de la semana según el itinerario de Canaima Airlines. Los días sin vuelo aparecen tachados en el calendario. Por ejemplo, Los Roques opera todos los días, mientras que rutas como Barinas operan lunes, miércoles y viernes. Selecciona primero el destino para ver los días habilitados.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <button class="faq-pregunta" onclick="toggleFaq(this)">
+                            ¿Qué pasa si mi vuelo se retrasa o cancela?
+                            <span class="faq-chevron">›</span>
+                        </button>
+                        <div class="faq-respuesta">
+                            <p>En caso de retraso superior a 2 horas o cancelación por causas imputables a la aerolínea, tienes derecho a reprogramación sin costo, reembolso completo o compensación conforme a la normativa aeronáutica venezolana (INAC). Nuestro equipo te contactará a través del correo registrado en la reserva.</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </section>
         <section id="seccion-admin" class="hidden"></section>
